@@ -123,6 +123,11 @@ static void runToolsMenu() {
       return;
     }
 
+    if (action == ToolsMenuAction::DiskInspector) {
+      uiRunDiskInspector();
+      continue;
+    }
+
     if (action == ToolsMenuAction::Necromancer) {
       if (!uiConfirmNecromancer()) {
         continue;

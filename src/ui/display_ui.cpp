@@ -354,8 +354,12 @@ BenchMenuAction uiHitTestBenchMenu(
 }
 
 
+static constexpr Button BTN_INSPECT {
+  18, 62, 284, 42, "DISK INSPECTOR"
+};
+
 static constexpr Button BTN_NECRO {
-  18, 78, 284, 48, "SD NECROMANCER"
+  18, 112, 284, 42, "SD NECROMANCER"
 };
 
 static constexpr Button BTN_TOOLS_BACK {
@@ -384,10 +388,15 @@ void uiDrawToolsMenu() {
   );
 
   tft().drawString(
-      "Experimental / destructive tools",
+      "Inspect first, experiment second",
       18,
-      48,
+      40,
       2
+  );
+
+  drawButton(
+      BTN_INSPECT,
+      TFT_CYAN
   );
 
   drawButton(
@@ -404,6 +413,10 @@ ToolsMenuAction uiHitTestToolsMenu(
     int x,
     int y
 ) {
+  if (hit(BTN_INSPECT, x, y)) {
+    return ToolsMenuAction::DiskInspector;
+  }
+
   if (hit(BTN_NECRO, x, y)) {
     return ToolsMenuAction::Necromancer;
   }
