@@ -2,7 +2,7 @@
 #include <cstddef>
 #include <cstdint>
 
-static constexpr const char* APP_VERSION = "v0.8.12";
+static constexpr const char* APP_VERSION = "v0.9.0";
 
 // ------------------------------------------------------------
 // CYD pins

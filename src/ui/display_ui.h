@@ -64,12 +64,16 @@ void uiWaitForTap();
 
 enum class ToolsMenuAction {
   None,
+  DiskInspector,
   Necromancer,
   Back
 };
 
 void uiDrawToolsMenu();
 ToolsMenuAction uiHitTestToolsMenu(int x, int y);
+
+// Read-only MBR/filesystem/raw-sector toolbox.
+void uiRunDiskInspector();
 
 // Two-step destructive arming screen. Returns true only after the
 // user explicitly taps ARM and then RUN.
