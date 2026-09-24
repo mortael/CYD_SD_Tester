@@ -15,9 +15,11 @@ static constexpr uint8_t NECRO_CMD1  = 1;
 static constexpr uint8_t NECRO_CMD8  = 8;
 static constexpr uint8_t NECRO_CMD9  = 9;
 static constexpr uint8_t NECRO_CMD10 = 10;
+static constexpr uint8_t NECRO_CMD12 = 12;
 static constexpr uint8_t NECRO_CMD13 = 13;
 static constexpr uint8_t NECRO_CMD16 = 16;
 static constexpr uint8_t NECRO_CMD17 = 17;
+static constexpr uint8_t NECRO_CMD18 = 18;
 static constexpr uint8_t NECRO_CMD24 = 24;
 static constexpr uint8_t NECRO_CMD30 = 30;
 static constexpr uint8_t NECRO_CMD55 = 55;
@@ -1474,6 +1476,492 @@ static bool quickCleanReinit(
   return false;
 }
 
+static bool mildRecover(
+    RawBus& bus) {
+  digitalWrite(SD_CS, HIGH);
+  idleClocks(bus, 16);
+  delay(25);
+
+  const uint8_t r13 =
+      command(
+          bus,
+          NECRO_CMD13,
+          0,
+          0
+      );
+
+  Serial.printf(
+      "  Mild recovery CMD13 -> %02X\n",
+      r13
+  );
+
+  return r13 == 0x00;
+}
+
+static bool readSectorVerifiedVerbose(
+    RawBus& bus,
+    uint32_t lba,
+    uint8_t out[SECTOR_SIZE],
+    bool& crcOkOut,
+    bool& allFfOut,
+    bool& all00Out) {
+  const uint32_t arg = lba;  // SDHC block addressing.
+
+  bus.spi.beginTransaction(bus.settings());
+  digitalWrite(SD_CS, LOW);
+
+  const uint8_t r1 =
+      commandSelected(
+          bus,
+          NECRO_CMD17,
+          arg,
+          0
+      );
+
+  if (r1 != 0x00) {
+    Serial.printf(
+        "  LBA %-10lu CMD17 rejected R1=%02X\n",
+        (unsigned long)lba,
+        r1
+    );
+
+    deselect(bus);
+    bus.spi.endTransaction();
+
+    crcOkOut = false;
+    allFfOut = false;
+    all00Out = false;
+    return false;
+  }
+
+  const uint32_t started = millis();
+  uint8_t token = 0xFF;
+
+  while (millis() - started < 1500UL) {
+    token = bus.spi.transfer(0xFF);
+
+    if (token != 0xFF) {
+      break;
+    }
+  }
+
+  if (token != 0xFE) {
+    Serial.printf(
+        "  LBA %-10lu R1=00 DATA TOKEN FAIL token=%02X waited=%lu ms\n",
+        (unsigned long)lba,
+        token,
+        (unsigned long)(millis() - started)
+    );
+
+    deselect(bus);
+    bus.spi.endTransaction();
+
+    crcOkOut = false;
+    allFfOut = false;
+    all00Out = false;
+    return false;
+  }
+
+  for (size_t i = 0; i < SECTOR_SIZE; ++i) {
+    out[i] = bus.spi.transfer(0xFF);
+  }
+
+  const uint16_t cardCrc =
+      ((uint16_t)bus.spi.transfer(0xFF) << 8) |
+      bus.spi.transfer(0xFF);
+
+  deselect(bus);
+  bus.spi.endTransaction();
+
+  const uint16_t calcCrc =
+      crc16Ccitt(out, SECTOR_SIZE);
+
+  crcOkOut = cardCrc == calcCrc;
+  allFfOut = true;
+  all00Out = true;
+
+  for (size_t i = 0; i < SECTOR_SIZE; ++i) {
+    allFfOut &= out[i] == 0xFF;
+    all00Out &= out[i] == 0x00;
+  }
+
+  Serial.printf(
+      "  LBA %-10lu R1=00 token=FE CRC card=%04X calc=%04X %s data=%s\n",
+      (unsigned long)lba,
+      cardCrc,
+      calcCrc,
+      crcOkOut ? "CRC-OK" : "CRC-BAD",
+      allFfOut ? "ALL-FF" : (all00Out ? "ALL-00" : "MIXED")
+  );
+
+  return true;
+}
+
+
+static uint8_t stopTransmissionSelected(
+    RawBus& bus) {
+  // CMD12 is special in SPI mode: one stuff byte precedes R1.
+  const uint8_t crc =
+      commandCrc(
+          NECRO_CMD12,
+          0
+      );
+
+  bus.spi.transfer(0x40U | NECRO_CMD12);
+  bus.spi.transfer(0x00);
+  bus.spi.transfer(0x00);
+  bus.spi.transfer(0x00);
+  bus.spi.transfer(0x00);
+  bus.spi.transfer(crc);
+
+  // Stuff byte after CMD12.
+  bus.spi.transfer(0xFF);
+
+  for (uint8_t i = 0; i < 16; ++i) {
+    const uint8_t r1 =
+        bus.spi.transfer(0xFF);
+
+    if ((r1 & 0x80U) == 0) {
+      return r1;
+    }
+  }
+
+  return 0xFF;
+}
+
+static bool multiBlockReadProbe(
+    RawBus& bus,
+    uint32_t startLba,
+    uint16_t maxBlocks) {
+  Serial.println(
+      "  === CMD18 MULTI-BLOCK STREAM PROBE ==="
+  );
+
+  Serial.printf(
+      "  Start LBA=%lu, target blocks=%u\n",
+      (unsigned long)startLba,
+      maxBlocks
+  );
+
+  uint8_t sector[SECTOR_SIZE];
+
+  bus.spi.beginTransaction(bus.settings());
+  digitalWrite(SD_CS, LOW);
+
+  const uint8_t r18 =
+      commandSelected(
+          bus,
+          NECRO_CMD18,
+          startLba,
+          0
+      );
+
+  Serial.printf(
+      "  CMD18 -> R1=%02X\n",
+      r18
+  );
+
+  if (r18 != 0x00) {
+    deselect(bus);
+    bus.spi.endTransaction();
+    return false;
+  }
+
+  uint16_t completed = 0;
+
+  for (; completed < maxBlocks; ++completed) {
+    const uint32_t tokenStart =
+        millis();
+
+    uint8_t token = 0xFF;
+
+    while (millis() - tokenStart < 1500UL) {
+      token =
+          bus.spi.transfer(0xFF);
+
+      if (token != 0xFF) {
+        break;
+      }
+    }
+
+    if (token != 0xFE) {
+      Serial.printf(
+          "  block %u / LBA %lu: TOKEN FAIL token=%02X waited=%lu ms\n",
+          completed,
+          (unsigned long)(startLba + completed),
+          token,
+          (unsigned long)(millis() - tokenStart)
+      );
+      break;
+    }
+
+    for (size_t i = 0; i < SECTOR_SIZE; ++i) {
+      sector[i] =
+          bus.spi.transfer(0xFF);
+    }
+
+    const uint16_t cardCrc =
+        ((uint16_t)bus.spi.transfer(0xFF) << 8) |
+        bus.spi.transfer(0xFF);
+
+    const uint16_t calcCrc =
+        crc16Ccitt(
+            sector,
+            SECTOR_SIZE
+        );
+
+    bool allFf = true;
+    bool all00 = true;
+
+    for (size_t i = 0; i < SECTOR_SIZE; ++i) {
+      allFf &= sector[i] == 0xFF;
+      all00 &= sector[i] == 0x00;
+    }
+
+    Serial.printf(
+        "  block %-3u LBA %-10lu token=FE CRC %04X/%04X %s data=%s\n",
+        completed,
+        (unsigned long)(startLba + completed),
+        cardCrc,
+        calcCrc,
+        cardCrc == calcCrc
+            ? "OK"
+            : "BAD",
+        allFf
+            ? "ALL-FF"
+            : (all00 ? "ALL-00" : "MIXED")
+    );
+  }
+
+  const uint8_t r12 =
+      stopTransmissionSelected(bus);
+
+  // Drain busy period after CMD12.
+  const uint32_t busyStart =
+      millis();
+
+  while (bus.spi.transfer(0xFF) == 0x00) {
+    if (millis() - busyStart > 1000UL) {
+      break;
+    }
+  }
+
+  deselect(bus);
+  bus.spi.endTransaction();
+
+  Serial.printf(
+      "  CMD12 STOP -> R1=%02X, completed=%u/%u blocks\n",
+      r12,
+      completed,
+      maxBlocks
+  );
+
+  return completed > 0;
+}
+
+
+static bool cmd18Window(
+    RawBus& bus,
+    uint32_t startLba,
+    uint16_t blocks,
+    bool& sawMixed,
+    bool& allCrcOk,
+    bool& sector0Seen) {
+  Serial.printf(
+      "  === CMD18 WINDOW start=%lu blocks=%u ===\n",
+      (unsigned long)startLba,
+      blocks
+  );
+
+  uint8_t sector[SECTOR_SIZE];
+
+  bus.spi.beginTransaction(bus.settings());
+  digitalWrite(SD_CS, LOW);
+
+  const uint8_t r18 =
+      commandSelected(
+          bus,
+          NECRO_CMD18,
+          startLba,
+          0
+      );
+
+  Serial.printf("  CMD18 -> R1=%02X\n", r18);
+
+  if (r18 != 0x00) {
+    deselect(bus);
+    bus.spi.endTransaction();
+    return false;
+  }
+
+  uint16_t completed = 0;
+
+  for (; completed < blocks; ++completed) {
+    const uint32_t tokenStart = millis();
+    uint8_t token = 0xFF;
+
+    while (millis() - tokenStart < 1500UL) {
+      token = bus.spi.transfer(0xFF);
+      if (token != 0xFF) {
+        break;
+      }
+    }
+
+    if (token != 0xFE) {
+      Serial.printf(
+          "  block %u / LBA %lu: TOKEN FAIL token=%02X waited=%lu ms\n",
+          completed,
+          (unsigned long)(startLba + completed),
+          token,
+          (unsigned long)(millis() - tokenStart)
+      );
+      break;
+    }
+
+    for (size_t i = 0; i < SECTOR_SIZE; ++i) {
+      sector[i] = bus.spi.transfer(0xFF);
+    }
+
+    const uint16_t cardCrc =
+        ((uint16_t)bus.spi.transfer(0xFF) << 8) |
+        bus.spi.transfer(0xFF);
+
+    const uint16_t calcCrc =
+        crc16Ccitt(sector, SECTOR_SIZE);
+
+    bool allFf = true;
+    bool all00 = true;
+    for (size_t i = 0; i < SECTOR_SIZE; ++i) {
+      allFf &= sector[i] == 0xFF;
+      all00 &= sector[i] == 0x00;
+    }
+
+    const bool crcOk = cardCrc == calcCrc;
+    allCrcOk &= crcOk;
+    sawMixed |= !(allFf || all00);
+
+    if ((startLba + completed) == 0 && crcOk) {
+      sector0Seen = true;
+    }
+
+    Serial.printf(
+        "  block %-3u LBA %-10lu CRC %04X/%04X %s data=%s\n",
+        completed,
+        (unsigned long)(startLba + completed),
+        cardCrc,
+        calcCrc,
+        crcOk ? "OK" : "BAD",
+        allFf ? "ALL-FF" : (all00 ? "ALL-00" : "MIXED")
+    );
+  }
+
+  const uint8_t r12 = stopTransmissionSelected(bus);
+
+  const uint32_t busyStart = millis();
+  while (bus.spi.transfer(0xFF) == 0x00) {
+    if (millis() - busyStart > 1000UL) {
+      break;
+    }
+  }
+
+  deselect(bus);
+  bus.spi.endTransaction();
+
+  Serial.printf(
+      "  CMD12 STOP -> R1=%02X completed=%u/%u\n",
+      r12,
+      completed,
+      blocks
+  );
+
+  return completed == blocks;
+}
+
+static bool cmd18CapacityWindows(
+    RawBus& bus,
+    uint32_t blockCount,
+    NecromancerResult& result) {
+  Serial.println("  === CMD18 CAPACITY WINDOWS ===");
+
+  // v0.8.18: reverse-priority order to separate an address-specific
+  // failure from a cumulative CMD18/session-budget failure.
+  const uint32_t starts[] = {
+      (blockCount * 3UL) / 4UL,
+      blockCount - 4096,
+      blockCount / 2,
+      blockCount / 4,
+      blockCount / 8,
+      2048,
+      0
+  };
+
+  bool overallOk = true;
+  bool sawMixed = false;
+  bool allCrcOk = true;
+  bool sector0Seen = false;
+  uint8_t completedWindows = 0;
+
+  for (uint32_t startLba : starts) {
+    Serial.printf(
+        "  WINDOW #%u candidate start=%lu\n",
+        completedWindows + 1,
+        (unsigned long)startLba
+    );
+    const bool ok =
+        cmd18Window(
+            bus,
+            startLba,
+            4,
+            sawMixed,
+            allCrcOk,
+            sector0Seen
+        );
+
+    const uint8_t status =
+        command(
+            bus,
+            NECRO_CMD13,
+            0,
+            0
+        );
+
+    Serial.printf(
+        "  POST-WINDOW CMD13 -> %02X\n",
+        status
+    );
+
+    if (!ok || status != 0x00) {
+      overallOk = false;
+      Serial.printf(
+          "  CMD18 path degraded on window #%u, start LBA=%lu.\n",
+          completedWindows + 1,
+          (unsigned long)startLba
+      );
+      break;
+    }
+
+    ++completedWindows;
+
+    digitalWrite(SD_CS, HIGH);
+    idleClocks(bus, 4);
+    delay(20);
+  }
+
+  if (sector0Seen) {
+    result.sector0ReadOk = true;
+  }
+
+  Serial.printf(
+      "  CMD18 WINDOWS SUMMARY: %s, completed=%u, CRC=%s, content=%s\n",
+      overallOk ? "PASS" : "PARTIAL/FAIL",
+      completedWindows,
+      allCrcOk ? "ALL-OK" : "ERRORS",
+      sawMixed ? "MIXED DATA SEEN" : "ONLY UNIFORM BLOCKS"
+  );
+
+  return overallOk;
+}
+
 static void sampleCapacity(
     RawBus& bus,
     uint32_t blockCount) {
@@ -1485,68 +1973,96 @@ static void sampleCapacity(
   }
 
   Serial.println(
-      "  === CAPACITY SAMPLE (fresh init per LBA) ==="
+      "  === CAPACITY SAMPLE (single session) ==="
   );
 
-  const uint32_t last =
-      blockCount - 1;
+  const uint32_t last = blockCount - 1;
 
+  // The damaged controller appears to survive only a few CMD17 reads.
+  // Probe the most informative addresses first before the session collapses.
   const uint32_t points[] = {
-      0,
-      1,
       2,
       2048,
-      blockCount / 8,
-      blockCount / 4,
       blockCount / 2,
-      (blockCount * 3UL) / 4UL,
       blockCount - 2048,
-      last
+      last,
+      blockCount / 4,
+      (blockCount * 3UL) / 4UL,
+      blockCount / 8,
+      0,
+      1,
+      3,
+      4,
+      8,
+      16,
+      32,
+      128
   };
 
   uint8_t sector[SECTOR_SIZE];
+  bool sessionAlive = true;
+  uint32_t successfulReads = 0;
 
   for (uint32_t lba : points) {
     if (lba >= blockCount) {
       continue;
     }
 
-    Serial.printf(
-        "  -- sample LBA %lu --\n",
-        (unsigned long)lba
-    );
-
-    if (!quickCleanReinit(bus)) {
-      Serial.println(
-          "  Sample skipped: re-init failed."
+    if (!sessionAlive) {
+      Serial.printf(
+          "  -- recovery before LBA %lu --\n",
+          (unsigned long)lba
       );
-      continue;
+
+      sessionAlive = mildRecover(bus);
+
+      if (!sessionAlive) {
+        Serial.println(
+            "  Mild recovery failed; trying full clean re-init..."
+        );
+
+        sessionAlive = quickCleanReinit(bus);
+      }
+
+      if (!sessionAlive) {
+        Serial.println(
+            "  Recovery failed; remaining samples skipped."
+        );
+        break;
+      }
     }
 
-    uint8_t r1 = 0xFF;
     bool crcOk = false;
     bool allFf = false;
     bool all00 = false;
 
-    const bool ok =
-        readSectorVerified(
+    sessionAlive =
+        readSectorVerifiedVerbose(
             bus,
             lba,
             sector,
-            r1,
-            true,
             crcOk,
             allFf,
             all00
         );
 
-    if (!ok) {
+    if (sessionAlive) {
+      ++successfulReads;
       Serial.printf(
-          "  LBA %-10lu READ FAIL R1=%02X\n",
-          (unsigned long)lba,
-          r1
+          "  Successful CMD17 reads this session: %lu\n",
+          (unsigned long)successfulReads
+      );
+    } else {
+      Serial.printf(
+          "  Session collapsed after %lu successful CMD17 reads.\n",
+          (unsigned long)successfulReads
       );
     }
+
+    // Small idle gap without resetting card state.
+    digitalWrite(SD_CS, HIGH);
+    idleClocks(bus, 2);
+    delay(5);
   }
 }
 
@@ -1679,39 +2195,8 @@ static void postReadyTriage(
       regR1
   );
 
-  // Preserve the earliest successful data-read proof before any
-  // experimental command can destabilize this damaged controller.
-  uint8_t firstSector0[SECTOR_SIZE];
-  uint8_t firstR1 = 0xFF;
-  bool firstCrcOk = false;
-  bool firstAllFf = false;
-  bool firstAll00 = false;
-
-  if (readSectorVerified(
-          bus,
-          0,
-          firstSector0,
-          firstR1,
-          true,
-          firstCrcOk,
-          firstAllFf,
-          firstAll00)) {
-    result.sector0ReadOk = true;
-    Serial.println(
-        "  STICKY sector0 proof: PASS"
-    );
-    dumpSectorSummary(
-        "FIRST SECTOR0",
-        firstSector0
-    );
-  } else {
-    Serial.printf(
-        "  STICKY sector0 proof: FAIL R1=%02X
-",
-        firstR1
-    );
-  }
-
+  // v0.8.15: do not consume an early CMD17 on sector 0.
+  // This controller appears to have a very small successful-read budget.
   uint32_t decodedBlocks = 0;
 
   if (result.cidOk) {
@@ -1730,14 +2215,77 @@ static void postReadyTriage(
   }
 
   if (decodedBlocks > 0) {
-    sampleCapacity(
-        bus,
-        decodedBlocks
+    const bool cmd18WindowsOk =
+        cmd18CapacityWindows(
+            bus,
+            decodedBlocks,
+            result
+        );
+
+    if (!cmd18WindowsOk) {
+      Serial.println(
+          "  CMD18 windows degraded; falling back to CMD17 profiling."
+      );
+
+      if (quickCleanReinit(bus)) {
+        sampleCapacity(
+            bus,
+            decodedBlocks
+        );
+      } else {
+        Serial.println(
+            "  CMD17 fallback skipped: clean re-init failed."
+        );
+      }
+    } else {
+      Serial.println(
+          "  CMD18 path remained stable; CMD17 sweep intentionally skipped."
+      );
+    }
+  }
+
+  // Only after high-value address probes, try to preserve a sector0 proof.
+  if (result.sector0ReadOk) {
+    Serial.println(
+        "  Sector0 already proven via CMD18; late CMD17 proof skipped."
+    );
+  } else if (quickCleanReinit(bus)) {
+    uint8_t stickySector0[SECTOR_SIZE];
+    uint8_t stickyR1 = 0xFF;
+    bool stickyCrcOk = false;
+    bool stickyAllFf = false;
+    bool stickyAll00 = false;
+
+    if (readSectorVerified(
+            bus,
+            0,
+            stickySector0,
+            stickyR1,
+            true,
+            stickyCrcOk,
+            stickyAllFf,
+            stickyAll00)) {
+      result.sector0ReadOk = true;
+      Serial.println(
+          "  LATE sticky sector0 proof: PASS"
+      );
+      dumpSectorSummary(
+          "LATE SECTOR0",
+          stickySector0
+      );
+    } else {
+      Serial.printf(
+          "  LATE sticky sector0 proof: FAIL R1=%02X\n",
+          stickyR1
+      );
+    }
+  } else {
+    Serial.println(
+        "  LATE sticky sector0 proof skipped: re-init failed."
     );
   }
 
   // Riskier/less essential command comes only after all useful reads.
-  quickCleanReinit(bus);
   probeWriteProtect(bus);
 
   uint8_t sector0[SECTOR_SIZE];
@@ -1949,9 +2497,9 @@ NecromancerResult runSdNecromancer() {
   digitalWrite(SD_CS, HIGH);
 
   Serial.println();
-  Serial.println("=== SD NECROMANCER v0.8.12 ===");
+  Serial.println("=== SD NECROMANCER v0.8.18 ===");
   Serial.println(
-      "Sticky read proof + fresh-init-per-LBA capacity sampling."
+      "CMD18 reverse-order fault isolation: address vs session budget."
   );
 
   Serial.printf(
