@@ -111,12 +111,14 @@ static void drawPartitionInspector(
           size
       );
 
+      const int rowY = 82 + (int)i * 26;
+
       tft().setTextDatum(TL_DATUM);
       tft().setTextColor(TFT_WHITE, TFT_BLACK);
       tft().drawString(
           value,
           10,
-          82 + (int)i * 24,
+          rowY,
           2
       );
 
@@ -130,9 +132,9 @@ static void drawPartitionInspector(
       tft().setTextColor(TFT_LIGHTGREY, TFT_BLACK);
       tft().drawString(
           value,
-          152,
-          82 + (int)i * 24,
-          2
+          10,
+          rowY + 14,
+          1
       );
     }
   }
