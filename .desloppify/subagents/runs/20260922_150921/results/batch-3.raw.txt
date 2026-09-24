@@ -1,0 +1,115 @@
+{
+  "batch": "convention_outlier",
+  "batch_index": 3,
+  "assessments": {
+    "convention_outlier": 88.5
+  },
+  "dimension_notes": {
+    "convention_outlier": {
+      "evidence": [
+        "src/hardware/sd_card.h declares makeSdConfig(uint32_t hz), cardTypeName(uint8_t type, uint64_t capacityBytes), fsName(uint8_t type), and allocateDmaBuffer(size_t size, const char* label) as single-line signatures, and sd_card.cpp defines them the same compact way.",
+        "src/hardware/card_format.h declares formatHumanBytes(uint64_t bytes, char* out, size_t outSize) and formatSpiClock(uint32_t hz, char* out, size_t outSize) compactly on one line, but card_format.cpp wraps both definitions one-argument-per-line, so the header and source disagree on style for the same functions.",
+        "src/hardware/card_identity.h declares all three of its functions (attemptStageName, resolveVendor, identityCheckName) compactly on one line; in card_identity.cpp, attemptStageName and resolveVendor stay compact but identityCheckName(const CardInfo& card) is wrapped onto multiple lines despite fitting easily on one, and despite its own header declaring it compactly.",
+        "By contrast, every other header/source pair with parameterized functions -- src/hardware/touch.h/.cpp, src/hardware/touch_calibration.h/.cpp, src/benchmark/bench_math.h/.cpp, src/benchmark/benchmark.h/.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, src/ui/ui_geometry.h/.cpp, src/ui/display_ui.h/.cpp, src/ui/display_ui_internal.h (lineRow) -- always wraps every parameter onto its own line regardless of how short the signature is (e.g. touch.h's `bool readTouch(int& sx, int& sy);` and bench_math.h's `float throughputMBs(size_t bytes, uint64_t ioMicros);` are wrapped even though both fit comfortably on one line).",
+        "The historical record shows the prior review batch explicitly reformatted touch.h/touch.cpp to match what it called 'the dominant one-arg-per-line style used throughout the rest of src/' -- confirming that style is the established codebase norm -- but sd_card.*/card_format.*/card_identity.* were not part of that pass and remain on the old compact style.",
+        "display_ui_internal.h declares header(const char* title) compactly on one line, but display_ui_internal.cpp wraps its single parameter onto its own line; header's sibling lineRow() is wrapped in both files, but that is justified by lineRow's genuinely longer 4-parameter signature, so header() is the odd one out even within this one small file.",
+        "Outside of this signature-wrapping split, conventions are strongly uniform: naming case (PascalCase types, camelCase functions/locals, SCREAMING_SNAKE constants), #pragma once in all 13 headers (no mixed include-guard styles), consistent use of `static` for internal linkage (no anonymous namespaces remain -- touch_calibration.cpp's mapRange/clampInt are static, matching the rest), and structs (never classes) used uniformly for both domain data (CardInfo, BenchmarkResult, AttemptResult) and local per-file drawing state (Button in display_ui.cpp, ScaleGraph/ScalePointXY in display_results.cpp).",
+        "display_diagnostics.cpp, display_results.cpp, display_progress.cpp, and display_ui.cpp all follow the same behavioral protocol (call header() once at the top of each full-screen draw function, then use tft()/lineRow() from display_ui_internal.h), so sibling screen files do not diverge in their draw-function protocol."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "confidence": "medium",
+      "issues_preventing_higher_score": "A residual compact-signature style island in hardware/sd_card.*, hardware/card_format.*, and hardware/card_identity.* diverges from the one-arg-per-line style the codebase has otherwise standardized on (and that the previous review round explicitly enforced elsewhere), plus a self-contradictory decl/def mismatch for identityCheckName() and header()."
+    }
+  },
+  "dimension_judgment": {
+    "convention_outlier": {
+      "dimension_character": "This is a small, disciplined codebase where naming case, include-guard style, internal-linkage idiom, and struct-vs-class usage are applied with near-total uniformity across all 29 files, and the prior review round already eliminated the worst outliers (touch.*'s compact formatting, touch_calibration.cpp's anonymous namespace). What remains is a narrower, mechanical residue of that same formatting cleanup: three hardware-layer file pairs (sd_card, card_format, card_identity) still use the pre-reform compact single-line signature style instead of the one-arg-per-line style that is now dominant everywhere else, and one of them (card_identity.cpp) is even internally inconsistent about which style it uses from function to function. A developer moving between ui/ or benchmark/ and these three hardware files would notice the visual shift, but nothing here is misleading or behaviorally inconsistent -- it is a leftover formatting nit, not a structural or protocol drift.",
+      "score_rationale": "This sits just below the 90 anchor ('mostly consistent with minor style islands that don't cause real confusion') because the drift is real, confirmed, and traceable to an incomplete application of the same reform the previous round already validated as correct -- but it is narrowly scoped to signature wrapping in 3 of roughly 14 header/source module pairs, is purely cosmetic, and would take a single mechanical reformatting pass to close. There is no evidence of naming drift, mixed export patterns, inconsistent plugin/module organization, or divergent behavioral protocols anywhere else in the tree, which keeps the score comfortably in the 'solid, minor rough edge' band rather than lower."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "convention_outlier",
+      "identifier": "compact_signature_style_island",
+      "summary": "sd_card.*, card_format.*, and card_identity.* keep compact single-line signatures, unlike the rest of src/",
+      "related_files": [
+        "src/hardware/sd_card.h",
+        "src/hardware/sd_card.cpp",
+        "src/hardware/card_format.h",
+        "src/hardware/card_identity.h"
+      ],
+      "evidence": [
+        "sd_card.h: `SdSpiConfig makeSdConfig(uint32_t hz);`, `const char* cardTypeName(uint8_t type, uint64_t capacityBytes);`, `const char* fsName(uint8_t type);` are all single-line, and sd_card.cpp defines them the same way.",
+        "card_format.h: `void formatHumanBytes(uint64_t bytes, char* out, size_t outSize);` and `void formatSpiClock(uint32_t hz, char* out, size_t outSize);` are single-line declarations.",
+        "card_identity.h: `const char* attemptStageName(AttemptStage stage);`, `const char* resolveVendor(uint8_t mid);`, `const char* identityCheckName(const CardInfo& card);` are all single-line.",
+        "Every comparable header elsewhere (touch.h, touch_calibration.h, bench_math.h, ui_geometry.h, display_ui.h, benchmark.h) wraps every parameter onto its own line even for equally short or shorter signatures, e.g. touch.h's `bool readTouch(int& sx, int& sy);` and bench_math.h's `float throughputMBs(size_t bytes, uint64_t ioMicros);`.",
+        "The previous review round's fix note for touch.h/touch.cpp explicitly names one-arg-per-line as 'the dominant one-arg-per-line style used throughout the rest of src/', confirming this is the established norm that sd_card.*/card_format.*/card_identity.* still don't follow."
+      ],
+      "suggestion": "Reformat the listed declarations/definitions in sd_card.h/.cpp, card_format.h, and card_identity.h to one-argument-per-line, matching the exact treatment touch.h/touch.cpp already received in the prior review pass. This is a pure whitespace change with no behavioral impact.",
+      "confidence": "medium",
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "root_cause_cluster": "incomplete_formatting_normalization"
+    },
+    {
+      "dimension": "convention_outlier",
+      "identifier": "card_identity_and_header_decl_def_mismatch",
+      "summary": "identityCheckName() and header() are defined with wrapped signatures that contradict their own single-line header declarations and (for identityCheckName) their file-siblings",
+      "related_files": [
+        "src/hardware/card_identity.cpp",
+        "src/hardware/card_identity.h",
+        "src/ui/display_ui_internal.cpp",
+        "src/ui/display_ui_internal.h"
+      ],
+      "evidence": [
+        "card_identity.h declares `const char* identityCheckName(const CardInfo& card);` on one line, but card_identity.cpp defines it as `const char* identityCheckName(\\n    const CardInfo& card\\n) {`, while the file's other two functions (attemptStageName, resolveVendor) keep the compact one-line form both there and in the header.",
+        "display_ui_internal.h declares `void header(const char* title);` on one line, but display_ui_internal.cpp defines it as `void header(\\n    const char* title\\n) {`, even though the single short parameter fits trivially on one line."
+      ],
+      "suggestion": "Make identityCheckName's definition match its own header declaration and its two file-sibling functions (single line), and do the same for header() in display_ui_internal.cpp so its definition matches its own declaration in display_ui_internal.h.",
+      "confidence": "low",
+      "impact_scope": "local",
+      "fix_scope": "single_edit",
+      "root_cause_cluster": "incomplete_formatting_normalization"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "The prior review's formatting-normalization fix (touch.h/touch.cpp reformatted to 'the dominant one-arg-per-line style') was applied to the single file pair that was flagged, but the same compact style survived unnoticed in hardware/sd_card.*, hardware/card_format.*, and hardware/card_identity.*, and even leaked into isolated per-function inconsistencies (identityCheckName, header()) where a .cpp definition doesn't match its own .h declaration."
+    ],
+    "likely_symptoms": [
+      "card_identity_and_header_decl_def_mismatch"
+    ],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "convention_outlier": {
+      "add": [
+        {
+          "header": "One-arg-per-line signature wrapping is the dominant, near-universal style",
+          "description": "touch.h/.cpp, touch_calibration.h/.cpp, bench_math.h/.cpp, ui_geometry.h/.cpp, benchmark.h/.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, and display_ui.h/.cpp/display_diagnostics.cpp/display_progress.cpp/display_results.cpp all wrap every function parameter onto its own line regardless of signature length, and the previous review round explicitly reformatted touch.* to match this as 'the dominant' style -- so it is the codebase's settled convention.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "sd_card/card_format/card_identity retain pre-reform compact signature style",
+          "description": "Unlike the rest of src/, sd_card.h/.cpp, card_format.h, and card_identity.h keep single-line function signatures for short parameter lists, and this predates (and was untouched by) the prior review's touch.h/touch.cpp reformatting -- a residual style island rather than a newly introduced one.",
+          "settled": true,
+          "positive": false
+        },
+        {
+          "header": "Naming case, include guards, and internal-linkage idiom are uniform",
+          "description": "All 13 headers use #pragma once, all types are PascalCase (CardInfo, BenchmarkResult, AttemptStage), all functions/locals are camelCase, all constants are SCREAMING_SNAKE, and every internal-linkage helper uses `static` (no anonymous namespaces remain anywhere in src/) -- these conventions have no exceptions across the 29-file tree.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Structs used uniformly for both domain and local screen-state data",
+          "description": "Domain types (CardInfo, BenchmarkResult, AttemptResult, SpiScaleResult) and file-local drawing helpers (Button in display_ui.cpp, ScaleGraph/ScalePointXY in display_results.cpp) are all plain structs; there is no class-based alternative anywhere in src/, so there is no mixed type-strategy split to report.",
+          "settled": true,
+          "positive": true
+        }
+      ]
+    }
+  }
+}

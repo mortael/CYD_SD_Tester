@@ -1,0 +1,76 @@
+{
+  "batch": "dependency_health",
+  "batch_index": 7,
+  "assessments": {
+    "dependency_health": 87.0
+  },
+  "dimension_notes": {
+    "dependency_health": {
+      "evidence": [
+        "platformio.ini [env:cyd] lib_deps lists only 'bodmer/TFT_eSPI' and 'greiman/SdFat' with no version constraint (no @^x.y.z pin), so a fresh checkout resolves to whatever the latest published release is at build time.",
+        "TFT_eSPI is configured entirely through build_flags (USER_SETUP_LOADED=1, ILI9341_2_DRIVER, TFT_* pins, LOAD_FONT2/4, SPI_FREQUENCY) in platformio.ini — this flag-based config API has changed across TFT_eSPI major versions historically, so an unpinned upgrade can silently stop compiling or change behavior.",
+        ".pio/libdeps/cyd currently has TFT_eSPI 2.5.43 and SdFat 2.3.1 resolved locally, but nothing in platformio.ini, README.md, or CLAUDE.md pins or documents these as required versions.",
+        "Only two runtime (non-dev) dependencies exist; both are used broadly and proportionately to their role: TFT_eSPI backs the entire src/ui/ rendering layer (display_ui*.cpp, display_progress.cpp, display_results.cpp, display_diagnostics.cpp), SdFat backs src/hardware/sd_card.* and all of src/benchmark/*.",
+        "No duplicate-purpose libraries found (single display lib, single SD/filesystem lib, single test framework in the isolated native test env which is out of scope per skip rules).",
+        "Import graph from holistic_context.structure.coupling_matrix (core <- util <- hardware <- ui <- benchmark) is a clean DAG with no back-edges/cycles between src/core, src/util, src/hardware, src/ui, src/benchmark.",
+        "Touch driver (src/hardware/touch.cpp) is a hand-rolled bit-banged SPI read for the XPT2046-style touch controller rather than pulling in a touch-controller library — reduces dependency surface rather than adding to it."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit",
+      "confidence": "medium",
+      "issues_preventing_higher_score": "Unpinned lib_deps versions for TFT_eSPI and SdFat are the only material gap keeping this below a top score; everything else about the dependency set (count, justification, absence of duplication/cycles) is healthy."
+    }
+  },
+  "dimension_judgment": {
+    "dependency_health": {
+      "dimension_character": "This is a small embedded project with a deliberately minimal dependency footprint: exactly two runtime libraries, each used extensively and proportionately to its purpose, no duplicate-purpose libraries, and a clean acyclic internal module graph. The one recurring gap is that neither of the two external libraries is version-pinned in platformio.ini, which is a real risk for TFT_eSPI given its build-flag-driven configuration surface has broken across versions before.",
+      "score_rationale": "Per the dependency_health anchors, this sits closer to '90 = mostly healthy with minor overlap or weight concerns' than to '80 = duplicate libraries/heavy deps for light use' — there is no duplication, no unused dependency, and no cyclic or bloated dependency graph, only a single concrete, fixable pinning gap. I scored 87.0 to reflect a genuinely healthy dependency set with one clear, low-effort-to-fix reliability risk rather than systemic drag."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "dependency_health",
+      "identifier": "unpinned_lib_deps_versions",
+      "summary": "TFT_eSPI and SdFat in platformio.ini have no version pin, risking silent build/behavior breaks",
+      "related_files": ["platformio.ini"],
+      "evidence": [
+        "lib_deps = bodmer/TFT_eSPI / greiman/SdFat with no @version suffix",
+        "TFT_eSPI is wired up purely through build_flags (USER_SETUP_LOADED, ILI9341_2_DRIVER, TFT_* pin flags, LOAD_FONT2/4, SPI_FREQUENCY) whose accepted flags/behavior have changed across TFT_eSPI releases",
+        "Currently resolved local copies are TFT_eSPI 2.5.43 and SdFat 2.3.1 per .pio/libdeps/cyd, but this isn't recorded anywhere as the intended/tested version"
+      ],
+      "suggestion": "Pin both entries to the currently-working versions, e.g. `bodmer/TFT_eSPI@2.5.43` and `greiman/SdFat@2.3.1`, so a fresh clone always builds against the versions this firmware was actually validated against; bump deliberately when ready to re-test.",
+      "confidence": "medium",
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "dependency_health": {
+      "add": [
+        {
+          "header": "Minimal, purpose-built dependency footprint",
+          "description": "Only two runtime libraries exist (TFT_eSPI for display, SdFat for the SD/filesystem layer), each used broadly and proportionately across the src tree with no overlapping/duplicate-purpose library and no unused dependency.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Touch driver avoids an extra library",
+          "description": "src/hardware/touch.cpp bit-bangs the XPT2046-style SPI protocol directly instead of adding a touch-controller library, keeping the dependency count low for a feature that is simple enough to implement inline.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "lib_deps entries are unpinned",
+          "description": "platformio.ini declares TFT_eSPI and SdFat with no version constraint, so PlatformIO resolves to the latest published release on a clean environment/CI build rather than a known-good version, which is a real risk given TFT_eSPI's history of breaking build-flag config changes across releases.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

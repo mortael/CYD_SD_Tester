@@ -1,0 +1,66 @@
+{
+  "batch": "design_coherence",
+  "batch_index": 17,
+  "assessments": {
+    "design_coherence": 91.0
+  },
+  "dimension_notes": {
+    "design_coherence": {
+      "evidence": [
+        "scanCard() (src/hardware/sd_card.cpp) is decomposed into fillCardIdentity(), runConsistencyChecks(), and printCardReport() single-purpose helpers rather than one monolithic function, keeping the orchestrator's happy-path readable.",
+        "benchmark.cpp's runChunkedIo() is a single shared chunked-loop helper parameterized by a ChunkIoFn function pointer + void* context, replacing what a prior review found as three copy-pasted loops (timedFileWrite/timedFileRead/verifyFile now each just supply a chunk function and title/stage strings).",
+        "display_results.cpp's uiShowSpiScaleResult() is composed of small named steps (scaleGraphMaxSpeed, drawScaleGraphFrame, scalePointCoords, drawScalePoint, buildScaleSummary) instead of one long function mixing five drawing concerns.",
+        "runQuickBenchmark() (src/benchmark/benchmark.cpp) nests three levels deep (if(file) -> if(preallocOk && seekSet) -> per-step ifs) to express a sequential dependent write/read/verify pipeline; flattening with early returns would require repeating file.close()/cleanup at each exit point, so the nesting reads as inherent to the single-cleanup-point requirement rather than a coherence defect.",
+        "scanCard() (sd_card.cpp) and runSpiScalingBenchmark() (spi_scale_benchmark.cpp) still share a near-identical reset+cardBegin+per-speed-error-logging scaffold; this is pre-existing, documented, accepted debt (wontfix) with only two call sites, not a new defect.",
+        "src/core/app_types.h's CardInfo struct has ~22 fields, but it is a single coherent domain aggregate (everything known about one scanned card: identity, capacity, filesystem, error state) rather than a mixed-concern grab bag or an unnecessary parameter object.",
+        "Home/benchmark-menu button hit-testing (display_ui.cpp) uses individually named constexpr Button values (BTN_SCAN, BTN_BENCH, BTN_DIAG, etc.) checked one-by-one rather than a data-driven array+loop; with only 3 buttons per screen and a distinct action per button, this keeps the button-to-action mapping directly traceable rather than obscuring it behind indices."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "No new defects found, but the codebase stops short of exemplary: two speed-iterating loops (scanCard/runSpiScalingBenchmark) still share an unabstracted scaffold (accepted as documented debt, not re-flagged), and runQuickBenchmark's sequential dependent-step pipeline carries three levels of nesting that a newcomer must read carefully to track which flags gate which step."
+    }
+  },
+  "dimension_judgment": {
+    "design_coherence": {
+      "dimension_character": "This is a small (29-file, ~3.4k LOC) embedded C++ codebase where a prior review round already extracted the worst offenders: the triplicated chunked I/O loop became one runChunkedIo() helper, the SPI-scale result screen was split into five named drawing steps, and orchestration functions (scanCard, runQuickBenchmark) delegate to focused single-purpose helpers rather than doing everything inline. What remains is largely consistent: functions map to one responsibility, parameter lists reflect genuine domain groupings (CardInfo as a scan-result aggregate, not an arbitrary bag), and the one remaining structural duplication (scanCard vs runSpiScalingBenchmark's speed-iteration scaffold) is a previously-reviewed, deliberately-accepted tradeoff given only two call sites.",
+      "score_rationale": "Against the anchors, this sits closer to 90 (strong, minor isolated friction) than 80 (solid but uneven): a developer reading any given file finds a single clear responsibility and consistent extraction style, and no function mixes unrelated concerns. It falls short of 100 because runQuickBenchmark's three-level nested dependent-step pipeline and the still-present (though accepted) scaffold duplication between scanCard and runSpiScalingBenchmark are the kind of isolated rough edges the 90-anchor describes, not because of any systemic design problem."
+    }
+  },
+  "issues": [],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "design_coherence": {
+      "add": [
+        {
+          "header": "Shared chunked-I/O helper in benchmark.cpp",
+          "description": "runChunkedIo() takes a ChunkIoFn function pointer plus void* context and drives the shared read/write/progress loop; timedFileWrite/timedFileRead/verifyFile each just supply the chunk operation and stage labels instead of duplicating the loop, replacing what a prior review flagged as triplicated code.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "scanCard() decomposed into single-purpose steps",
+          "description": "fillCardIdentity(), runConsistencyChecks(), and printCardReport() are extracted out of scanCard() (src/hardware/sd_card.cpp), so the orchestrator reads as a sequence of named steps rather than one monolithic function mixing qualification, identity parsing, consistency checks, and reporting.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Explicit callback threading avoids an upward dependency",
+          "description": "BenchmarkProgressFn (benchmark_internal.h) is passed explicitly into runQuickBenchmark() from main.cpp rather than benchmark/ #including ui/display_ui.h directly; the header comment documents this is deliberate so benchmark/ does not depend upward on ui/. This is a design decision that trades one extra parameter for a cleaner dependency direction.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "scanCard/runSpiScalingBenchmark scaffold duplication remains, accepted",
+          "description": "The two speed-iterating routines still share a near-identical reset+cardBegin+per-speed-error-logging scaffold. This was already reviewed and marked wontfix on the grounds that with only two call sites the duplication is tolerable; still present in the current code, not a new or newly-reportable defect.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "batch": "high_level_elegance",
+  "batch_index": 2,
+  "assessments": {
+    "high_level_elegance": 91.5
+  },
+  "dimension_notes": {
+    "high_level_elegance": {
+      "evidence": [
+        "src/ splits cleanly into core/ (pin config + shared value types, zero downstream deps), hardware/ (SD + touch drivers and their pure-logic companions), benchmark/ (quick + SPI-scaling benchmarks, pure math split into bench_math.*), and ui/ (TFT rendering split one file per screen) - each maps to a real domain capability, not a historical accident.",
+        "main.cpp (151 lines) is genuinely a thin event loop: setup() wires initDisplay/initTouch/initSdHardware + one rescan(); loop() reads touch, hit-tests, and dispatches on HomeAction to rescan()/runBenchMenu()/showDiagnostics() - matching CLAUDE.md's Architecture description verbatim.",
+        "Dependency direction is coherent: core/ has zero includes of hardware/benchmark/ui; hardware/ only includes core/; benchmark/ includes core/+hardware/; ui/ includes core/+hardware/ - confirmed by grepping every #include in src/.",
+        "CLAUDE.md's Architecture section (lines 91-104) still documents a `diagnostics.*` file pair with a `showDiagnosticsScreen()` function ('thin glue ... composing uiShowDiagnostics() + uiWaitForTap() for main.cpp's one call site'), but src/ui/diagnostics.h and diagnostics.cpp no longer exist - the logic was inlined into main.cpp as a static showDiagnostics() (main.cpp:14-22, calling uiShowDiagnostics() + uiWaitForTap() directly).",
+        "Aside from that one stale paragraph, CLAUDE.md's per-directory breakdown (core/hardware/benchmark/ui responsibilities, the two SPI speed ladders, the DMA buffer/recordSdError sharing rationale, the timing-discipline note in benchmark.cpp) all match the current source exactly - verified sd_card.cpp's function list against the 'sd_card.cpp is now limited to: SPI/card init, speed qualification, CID/CSD, filesystem mount, card identity/state' claim, and benchmark/*.cpp's function list against the benchmark.h summary.",
+        "benchmark/benchmark.cpp includes ../ui/display_ui.h and calls uiShowProgress() directly (4 call sites) during chunked I/O, meaning the benchmark domain module drives UI rendering itself rather than main.cpp orchestrating it - an atypical layering choice for a domain-owns-UI-call pattern, but it is deliberate and explained in-line (single-threaded embedded loop, timing-discipline comments) rather than accidental drift."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "CLAUDE.md's Architecture section still describes a deleted diagnostics.* file pair and a showDiagnosticsScreen() function that was inlined into main.cpp; a new engineer reading the doc would look for a file that doesn't exist."
+    }
+  },
+  "dimension_judgment": {
+    "high_level_elegance": {
+      "dimension_character": "The top-level decomposition (core/hardware/benchmark/ui) is domain-aligned, dependency direction between those packages is clean and one-directional, and main.cpp is exactly the thin dispatcher the docs claim it is. Headers carry unusually thorough rationale comments explaining why boundaries sit where they do, which is a real asset for a new engineer. The one blemish is that CLAUDE.md's architecture writeup wasn't updated after a prior cleanup removed src/ui/diagnostics.*, so it now describes a file and function that no longer exist.",
+      "score_rationale": "This sits just below the 90-100 'strong/exemplary' band on the global anchors: a developer would trust the decomposition and find it self-explanatory almost everywhere, but the stale diagnostics.* paragraph in CLAUDE.md is exactly the kind of 'reference docs match runtime reality' failure the rubric calls out, and it would cost a new engineer real time. It's an isolated, single-file, single-edit fix rather than a systemic problem, so it caps the score just under the exemplary range rather than pulling it into 'uneven'."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "high_level_elegance",
+      "identifier": "claudemd_stale_diagnostics_module",
+      "summary": "CLAUDE.md documents a deleted src/ui/diagnostics.* module and showDiagnosticsScreen() function",
+      "related_files": [
+        "CLAUDE.md",
+        "src/main.cpp"
+      ],
+      "evidence": [
+        "CLAUDE.md lines 101-102: '- `diagnostics.*` — thin glue (`showDiagnosticsScreen()`) composing `uiShowDiagnostics()` + `uiWaitForTap()` for `main.cpp`'s one call site.'",
+        "src/ui/diagnostics.h and src/ui/diagnostics.cpp do not exist in the repository.",
+        "The described logic now lives as a static showDiagnostics() function directly in src/main.cpp (lines 14-22), which calls uiShowDiagnostics() and uiWaitForTap() inline."
+      ],
+      "suggestion": "In CLAUDE.md's Architecture section, replace the `diagnostics.*` bullet with a note that diagnostics glue is inlined as the static showDiagnostics() helper in main.cpp (next to rescan() and runBenchMenu()), matching how the file is actually organized today.",
+      "confidence": "high",
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "A prior cleanup pass (inlining diagnostics.cpp's glue into main.cpp) updated the code but missed updating the corresponding paragraph in CLAUDE.md's Architecture section, showing that doc updates aren't consistently paired with structural refactors."
+    ],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "high_level_elegance": {
+      "add": [
+        {
+          "header": "Domain-aligned core/hardware/benchmark/ui split",
+          "description": "Each top-level src/ directory maps to a real domain capability (shared types/config, drivers, benchmarks, rendering) rather than a historical grouping, and dependency direction between them is strictly one-way (core has zero outgoing deps; hardware only depends on core; benchmark and ui depend downward). A new engineer can predict which directory owns a given concern.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "main.cpp is a genuinely thin dispatcher",
+          "description": "setup()/loop() in main.cpp (151 lines total) only wire up modules and dispatch on HomeAction/BenchMenuAction to module-level functions; there is no business logic inlined here, matching the CLAUDE.md claim that it is intentionally thin.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Headers carry rationale comments, not just signatures",
+          "description": "Files like sd_card.h and benchmark.h explain in-line why a boundary decision was made (e.g. why scanCard() returns a bool nobody checks vs. runSpiScalingBenchmark()'s self-contained result, why card_format/card_identity live in hardware/ instead of a shared util/). This meaningfully speeds up onboarding compared to bare declarations.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "benchmark/ directly drives ui/ progress rendering",
+          "description": "benchmark.cpp includes ui/display_ui.h and calls uiShowProgress() itself from inside chunked I/O loops, rather than main.cpp orchestrating progress display. This is an atypical layering direction (domain logic calling into presentation) but is a deliberate, documented choice for a single-threaded embedded event loop rather than accidental drift - noted here as a neutral characteristic, not a defect.",
+          "settled": false,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

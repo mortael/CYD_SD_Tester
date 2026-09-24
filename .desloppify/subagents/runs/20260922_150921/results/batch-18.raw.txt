@@ -1,0 +1,100 @@
+{
+  "batch": "contract_coherence",
+  "batch_index": 18,
+  "assessments": {
+    "contract_coherence": 90.5
+  },
+  "dimension_notes": {
+    "contract_coherence": {
+      "evidence": [
+        "src/hardware/sd_card.h: scanCard() carries a 12-line comment explaining its bool return is unchecked by design, and explicitly contrasts its persistent-state contract with runSpiScalingBenchmark()'s one-shot return contract.",
+        "src/benchmark/benchmark.h: runSpiScalingBenchmark() documents its hidden scanCard() re-run side effect and what callers can assume about getCardInfo()/getSd() afterward, but the adjacent runQuickBenchmark() in the same header has zero doc comment despite similarly non-trivial behavior (creates/removes a test file, writes to Serial, returns an all-default BenchmarkResult on early failure).",
+        "src/core/app_types.h: BenchmarkResult.cleanupOk defaults to true while every sibling *Ok field (preallocOk, fileWriteOk, fileReadOk, verifyOk, rawReadOk) defaults to false -- an inconsistent 'success until proven otherwise' polarity within the same field family, and it is never read by any caller (grep shows only the single write site in benchmark.cpp, no display or log consumer).",
+        "src/core/app_types.h / src/hardware/sd_card.cpp: CardInfo.csdOk is set true in fillCardIdentity() alongside cidOk but is never read anywhere in the codebase, unlike cidOk which gates identityCheckName().",
+        "getCardInfo()/getSd()/getAttempts()/getAttemptCount() in sd_card.h are all pure reads over static module state -- no getX() function was found that mutates state under a getter name.",
+        "uiHitTestHome()/uiHitTestBenchMenu() in display_ui.h are pure (no side effects), consistent with their 'hitTest' naming; uiShow*/uiDraw* functions are consistently side-effecting draw calls, matching their verb prefixes."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "Two isolated but real inconsistencies remain: (1) benchmark.h documents one sibling function's return/side-effect contract exhaustively while leaving the other undocumented, and (2) two struct fields (cleanupOk, csdOk) are written but never consumed, breaking the otherwise-reliable pattern that every other *Ok field in the same structs drives visible UI/log output."
+    }
+  },
+  "dimension_judgment": {
+    "contract_coherence": {
+      "dimension_character": "This is a codebase where contracts are, on the whole, unusually well-tended for an embedded C++ project: functions with non-obvious return semantics or hidden side effects (scanCard(), runSpiScalingBenchmark()) carry explicit, carefully-reasoned doc comments at their declaration site, and every getX() function found is a genuinely pure read. The defects that remain are narrow and isolated rather than systemic: one documentation asymmetry between two sibling declarations in benchmark.h, and two struct fields (cleanupOk, csdOk) whose write-only status quietly breaks the otherwise-trustworthy convention that *Ok fields drive visible behavior.",
+      "score_rationale": "The codebase clears the 90 anchor ('a developer would trust what they see, with only minor friction') because the side-effect-heavy, easy-to-misread functions are exactly the ones that got documented, and no return-type lies or getter/mutator mismatches were found anywhere in the ~3.3k LOC surface. It falls short of 100 because the two issues above are real, verifiable gaps a careful developer would trip on -- the runQuickBenchmark() doc gap right next to a heavily-documented sibling, and dead-but-declared status fields that look meaningful but aren't."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "contract_coherence",
+      "identifier": "benchmark_h_doc_asymmetry",
+      "summary": "runQuickBenchmark() is undocumented while its sibling runSpiScalingBenchmark() in the same header has an exhaustive side-effect/return contract comment",
+      "related_files": ["src/benchmark/benchmark.h", "src/benchmark/benchmark.cpp"],
+      "evidence": [
+        "benchmark.h: runSpiScalingBenchmark() has a 6-line comment explaining its rescan() side effect and what callers may assume about getCardInfo()/getSd() afterward.",
+        "benchmark.h: runQuickBenchmark() has no comment at all, even though benchmark.cpp shows it creates and deletes a test file on the SD card, writes to Serial, and silently returns an all-default BenchmarkResult (every *Ok field false) when card.cardOk is false or the DMA buffer allocation fails."
+      ],
+      "suggestion": "Add a short comment above runQuickBenchmark() in benchmark.h stating that a default-constructed (all-false) BenchmarkResult is returned on early failure (card not qualified, or buffer allocation failure), matching the documentation style already used for its sibling in the same header.",
+      "confidence": "medium",
+      "impact_scope": "local",
+      "fix_scope": "single_edit",
+      "root_cause_cluster": "benchmark_h_contract_docs"
+    },
+    {
+      "dimension": "contract_coherence",
+      "identifier": "write_only_status_fields",
+      "summary": "BenchmarkResult.cleanupOk and CardInfo.csdOk are written but never read by any caller, and cleanupOk's true-by-default polarity is inconsistent with every sibling *Ok field",
+      "related_files": ["src/core/app_types.h", "src/benchmark/benchmark.cpp", "src/hardware/sd_card.cpp"],
+      "evidence": [
+        "app_types.h: BenchmarkResult declares preallocOk/fileWriteOk/fileReadOk/verifyOk/rawReadOk defaulting to false but cleanupOk defaulting to true -- the only field with 'succeeded unless proven otherwise' semantics in the struct.",
+        "benchmark.cpp sets result.cleanupOk once (line ~437); no file in src/ui or src/benchmark reads it afterward (printBenchmarkResult() and uiShowBenchmarkResult() both skip it).",
+        "sd_card.cpp's fillCardIdentity() sets info.csdOk = true alongside info.cidOk = true, but only cidOk is later read (by identityCheckName()); csdOk has no reader anywhere in src/."
+      ],
+      "suggestion": "Either surface these fields where the other *Ok fields already surface (e.g. show cleanup status in printBenchmarkResult()'s Serial summary, or fold csdOk into identityCheckName()'s check alongside cidOk), or remove the fields if they don't need to be tracked -- don't leave declared-but-unconsumed status fields in a struct whose sibling fields are all consumed.",
+      "confidence": "medium",
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "root_cause_cluster": "write_only_status_fields"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "Side-effect documentation was added reactively (per prior review round) to the specific functions that were flagged, rather than as a header-wide convention applied to every declaration -- hence the asymmetry between runQuickBenchmark() and runSpiScalingBenchmark().",
+      "Struct fields (cleanupOk, csdOk) appear to have been added defensively/symmetrically alongside fields that ARE consumed, without a corresponding consumer being wired up."
+    ],
+    "likely_symptoms": ["benchmark_h_doc_asymmetry", "write_only_status_fields"],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "contract_coherence": {
+      "add": [
+        {
+          "header": "Side-effect contracts documented at declaration site",
+          "description": "scanCard() and runSpiScalingBenchmark() both carry multi-line comments at their header declarations explaining hidden global-state mutation and exactly what a caller may assume about getCardInfo()/getSd() afterward -- this is the strongest positive pattern in the dimension and appears to be a direct result of a prior review round.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "getX() naming matches purity everywhere",
+          "description": "Every getX()-named function found (getCardInfo, getSd, getAttempts, getAttemptCount) is a pure read of static module state with no side effects; no getter-that-mutates pattern exists in this codebase.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "benchmark.h documents one sibling function, not the other",
+          "description": "runSpiScalingBenchmark() has an exhaustive side-effect comment while runQuickBenchmark(), in the same header, has none despite comparable failure-path and I/O side-effect complexity -- an isolated documentation-coverage gap rather than a systemic pattern.",
+          "settled": true,
+          "positive": false
+        },
+        {
+          "header": "Write-only status fields in CardInfo/BenchmarkResult",
+          "description": "cleanupOk (BenchmarkResult) and csdOk (CardInfo) are set but never read by any consumer, and cleanupOk's default-true polarity breaks the false-by-default convention every sibling *Ok field follows -- a minor struct-contract inconsistency isolated to two fields.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

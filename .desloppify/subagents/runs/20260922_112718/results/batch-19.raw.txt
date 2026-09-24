@@ -1,0 +1,67 @@
+{
+  "batch": "logic_clarity",
+  "batch_index": 19,
+  "assessments": {
+    "logic_clarity": 94.5
+  },
+  "dimension_notes": {
+    "logic_clarity": {
+      "evidence": [
+        "scanCard() (src/hardware/sd_card.cpp) uses a uniform guard-clause ladder (InitFailed/CidFailed/CsdFailed/ReadFailed -> continue) for each SPI speed attempt, then a single Passed branch with 'break' — happy path and failure paths are both traceable without ambiguity.",
+        "timedFileWrite/timedFileRead/verifyFile (src/benchmark/benchmark_raw.cpp, benchmark.cpp) share the identical 'while (done < TEST_SIZE) { chunk; io; if (fail) return false; done += chunk; }' shape with no divergent or dead branches.",
+        "runQuickBenchmark (src/benchmark/benchmark.cpp) chains 'if (prevStepOk && seekOk) { nextStep }' guards so a failed step correctly short-circuits later dependent steps (preallocOk -> fileWriteOk -> fileReadOk -> verifyOk) without leaving stale result flags.",
+        "No identical if/else or ternary branches found; no code found following an unconditional return/break/continue in any of the 31 src files.",
+        "computeBarFillWidth (src/ui/ui_geometry.cpp) and formatSpiClock/formatHumanBytes (src/util/card_format.cpp) are small, direct, single-purpose functions with clamps that are exercised and asserted by unit tests (test/test_ui_geometry, test/test_bench_math), giving confidence the branches are provably correct rather than merely plausible.",
+        "cidOk/csdOk/cardOk in CardInfo (src/core/app_types.h) are only ever set together in fillCardIdentity(), which is only reached after CID+CSD+sector-read all succeed in scanCard() — the later 'if (info.cidOk)' guards in printCardIdentity/uiShowDiagnostics are therefore meaningful two-state checks, not redundant checks on an effectively-constant value.",
+        "Minor legibility friction (not a correctness defect): display_diagnostics.cpp re-derives the same three-way stage classification twice in nearby code — once as if/else-if/else for the status text, once as a nested ternary for the row color — a reader has to mentally align the two instead of reading one branch.",
+        "Minor legibility friction: uiShowProgress's liveMBs parameter (src/ui/display_ui.h) defaults to a magic -1.0f sentinel to mean 'no throughput yet', checked via 'if (liveMBs >= 0.0f)' in display_progress.cpp — functionally correct and consistently used at both call sites, but an unnamed sentinel rather than an explicit flag/optional."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "No control-flow defects were found; the score is held just under 'exemplary' only for two low-severity legibility frictions (duplicated three-way stage classification in display_diagnostics.cpp, and the unnamed -1.0f sentinel default in uiShowProgress) that cost a reader a moment of cross-referencing but never produce incorrect behavior."
+    }
+  },
+  "dimension_judgment": {
+    "logic_clarity": {
+      "dimension_character": "Control flow throughout this small embedded codebase is direct and provably correct: guard-clause ladders in the SD scanning and benchmarking loops make failure and success paths equally visible, chained '&&'-guarded steps prevent stale/inconsistent result state, and pure math helpers are covered by unit tests that pin down edge cases (zero time, zero max, partial chunks). The only frictions found are cosmetic — a duplicated three-way condition in one diagnostics screen and a magic sentinel default — with no dead code, no identical branches, and no boolean-simplification anti-patterns anywhere in the 31 source files.",
+      "score_rationale": "This sits close to the 100 anchor (control flow a developer can trace without surprises) rather than the 90 anchor, because an exhaustive pass over every .cpp/.h file turned up zero provable logic defects — no dead paths, no always-true/false conditions, no redundant null checks, no async-without-await equivalents. It is not a full 100 because two minor readability frictions (duplicated stage-classification logic, unnamed sentinel default) exist, so 94.5 reflects 'essentially exemplary with isolated cosmetic friction' rather than a flawless score."
+    }
+  },
+  "issues": [],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "logic_clarity": {
+      "add": [
+        {
+          "header": "Uniform guard-clause ladder in SD scan/benchmark loops",
+          "description": "scanCard(), timedFileWrite/Read, verifyFile, and rawReadAtCurrentSpeed all use the same 'check failure -> record error -> continue/return false' shape, keeping the happy path visually distinct from error handling across every I/O loop in the codebase.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Chained success guards prevent stale benchmark state",
+          "description": "runQuickBenchmark() gates each dependent step (write -> read -> verify) behind '&& seekOk'/'&& prevStepOk' checks, so a failed earlier step correctly leaves later BenchmarkResult flags at their false default instead of running on inconsistent state.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Pure math/geometry helpers are unit-tested at their edges",
+          "description": "bench_math.cpp and ui_geometry.cpp are hardware-independent by design and covered by test/test_bench_math and test/test_ui_geometry, which assert exact behavior at zero-time, zero-max, and partial-chunk edge cases — giving the control flow provable correctness rather than apparent correctness.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "cardOk/cidOk/csdOk are a true design invariant, not redundant flags",
+          "description": "These CardInfo booleans are only ever set together in fillCardIdentity(), reached solely after CID+CSD+sector-read all succeed in scanCard(); downstream 'if (info.cidOk)' checks are meaningful two-state guards rather than checks on a value that can't actually vary.",
+          "settled": false,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

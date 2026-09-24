@@ -1,0 +1,74 @@
+{
+  "batch": "cross_module_architecture",
+  "batch_index": 1,
+  "assessments": {
+    "cross_module_architecture": 90.0
+  },
+  "dimension_notes": {
+    "cross_module_architecture": {
+      "evidence": [
+        "coupling_matrix shows a strictly layered graph: util->core, hardware->core/util, ui->hardware/core, benchmark->core/hardware/ui, with zero reverse edges (no core->anything, no hardware->ui, no ui->benchmark) — no cycles detected anywhere in the 31-file tree",
+        "src/core/config.h (10 importers) and src/core/app_types.h (8 importers) are pure constexpr constants and plain structs/enums with zero fan-out (avg_fan_out 0.5 per structure data) — a shared foundation layer, not a behavioral hub; CLAUDE.md documents this as deliberate ('no class hierarchy; modules communicate through these plain structs')",
+        "src/ui/display_ui.h (7 importers) is a single public facade header implemented across 4 separate .cpp files (display_ui.cpp, display_diagnostics.cpp, display_progress.cpp, display_results.cpp) that share internals via src/ui/display_ui_internal.h, explicitly commented 'Not part of the public display_ui.h API' — a clean public/internal header split",
+        "src/benchmark/benchmark_internal.h mirrors the same public/internal header convention (allocateDmaBuffer, rawReadAtCurrentSpeed shared between benchmark.cpp, benchmark_raw.cpp, spi_scale_benchmark.cpp) — the pattern is applied consistently in both the ui/ and benchmark/ directories",
+        "src/benchmark/benchmark.cpp includes ../ui/display_ui.h and calls uiShowProgress() directly inside its I/O loops (timedFileWrite, timedFileRead, verifyFile, runQuickBenchmark) — the only edge in the whole coupling matrix that isn't strictly downward-layered (benchmark reaching into ui instead of main.cpp orchestrating the handoff)",
+        "That benchmark->ui call is explicitly documented and justified in CLAUDE.md: 'Timing discipline is load-bearing: only the actual SD I/O call is inside the timed interval — UI progress updates and CRC verification happen outside it. Any change to this loop must preserve that separation or the reported MB/s numbers become meaningless.' The code matches this: t0/t1 micros() calls bracket only file.write/file.read, with uiShowProgress called outside the timed span",
+        "The sibling file src/benchmark/spi_scale_benchmark.cpp performs the same class of hardware I/O loop but has zero UI includes/calls — it only prints to Serial, confirming the UI dependency in benchmark.cpp is a deliberate per-benchmark UX choice (long single 16MB transfer needs a live bar; short per-speed 4MB scan doesn't) rather than an accidental leak",
+        "test/ mirrors an explicit hardware-independent vs hardware-coupled split: bench_math, ui_geometry, card_format, card_identity, touch_calibration, app_types all have host-runnable unit tests and their headers carry 'no hardware/Arduino dependency, safe to unit-test on host' comments; sd_card.*, touch.*, benchmark orchestration, and display_ui.* (all with real hardware/TFT dependencies) are correctly left untested on host — the architectural seam is intentional and consistently honored",
+        "Process-global hardware state (getCardInfo()/getSd() returning references to static globals in sd_card.cpp) is used uniformly by ui, benchmark, and diagnostics rather than being threaded through call chains, and this is explicitly documented in CLAUDE.md's Data flow section as a deliberate single-instance-hardware tradeoff, not an accidental shared-mutable-state hazard"
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "The single benchmark->ui direct-call edge in benchmark.cpp (used across 4 call sites) is a real, minor layer-direction inversion relative to the rest of the codebase's strict downward layering, even though it is deliberate and documented; a purist would still prefer main.cpp (the composition root) to own the ui handoff so benchmark.cpp stays as hardware/UI-agnostic as its spi_scale_benchmark.cpp sibling."
+    }
+  },
+  "dimension_judgment": {
+    "cross_module_architecture": {
+      "dimension_character": "This is a small, deliberately layered embedded codebase (core -> util -> hardware -> ui -> benchmark) with no cycles, no hub modules carrying behavior, and a consistently applied public/internal header-splitting convention in both the ui/ and benchmark/ directories. The one place dependency direction bends — benchmark.cpp calling directly into ui/display_ui.h for live progress rendering — is explicitly documented as an intentional, invariant-preserving design choice (timing correctness excludes UI cost) rather than an accidental leak, and its sibling file in the same directory shows the boundary is respected whenever the UX doesn't require it. A new engineer reading CLAUDE.md's Architecture section would find the runtime matching the description almost exactly.",
+      "score_rationale": "This sits above the 80 anchor (solid but uneven) because there is no repeated, undocumented boundary drift, no cycles, and the god-module signals (config.h, app_types.h) are inert data/constant headers rather than behavioral hubs — the kind of pattern the rubric explicitly asks to skip. It falls short of a 95+/exemplary score only because of the one real, if deliberate, layer-direction inversion (benchmark reaching into ui rather than main.cpp mediating the handoff), which is the sole recurring pattern keeping this from a fully clean unidirectional graph."
+    }
+  },
+  "issues": [],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "cross_module_architecture": {
+      "add": [
+        {
+          "header": "Strictly layered, acyclic module graph",
+          "description": "coupling_matrix across core/util/hardware/ui/benchmark shows only downward edges (util->core, hardware->core/util, ui->hardware/core, benchmark->core/hardware/ui) with no reverse edges and no cycles anywhere in the 31-file tree.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "core/ headers are inert data, not behavioral hubs",
+          "description": "config.h (10 importers) and app_types.h (8 importers) top the god_modules signal by importer count, but both are pure constexpr constants and plain structs/enums with near-zero fan-out and no logic, so their high fan-in doesn't create the blast-radius risk a behavioral hub would.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Consistent public/internal header split in ui/ and benchmark/",
+          "description": "Both src/ui (display_ui.h + display_ui_internal.h) and src/benchmark (benchmark.h + benchmark_internal.h) use the same convention: a small public API header plus an explicitly-commented 'not part of the public API' internal header shared by several .cpp implementation files. The pattern repeats across directories instead of being one-off.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "benchmark.cpp's UI coupling is documented and invariant-driven",
+          "description": "benchmark.cpp calls uiShowProgress() directly during its I/O loops, which is the only non-downward edge in the dependency graph. CLAUDE.md documents this as load-bearing: timing measurement brackets only the SD I/O call, with UI updates explicitly placed outside the timed interval to keep reported MB/s accurate. The sibling spi_scale_benchmark.cpp (same directory, same kind of I/O loop) has zero UI dependency, showing the coupling is an intentional per-case UX choice, not an accidental leak.",
+          "settled": true,
+          "positive": false
+        },
+        {
+          "header": "Host-testable vs hardware-coupled split matches architecture docs",
+          "description": "test/ covers exactly the modules whose headers are commented as hardware-independent (bench_math, ui_geometry, card_format, card_identity, touch_calibration, app_types), while hardware/UI-dependent modules (sd_card, touch, display_ui, benchmark orchestration) are correctly left to on-device validation only. Runtime structure matches the documented architecture in CLAUDE.md almost exactly.",
+          "settled": true,
+          "positive": true
+        }
+      ]
+    }
+  }
+}

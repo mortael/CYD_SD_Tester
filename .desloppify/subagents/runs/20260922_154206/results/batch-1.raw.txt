@@ -1,0 +1,73 @@
+{
+  "batch": "cross_module_architecture",
+  "batch_index": 1,
+  "assessments": {
+    "cross_module_architecture": 93.0
+  },
+  "dimension_notes": {
+    "cross_module_architecture": {
+      "evidence": [
+        "grep across src/*/*.cpp/.h shows include direction is strictly core -> hardware -> {benchmark, ui}, with main.cpp the only file including both benchmark/benchmark.h and ui/display_ui.h (the sole cross-layer wiring point)",
+        "benchmark/benchmark.h now defines `BenchmarkProgressFn` and documents in a comment that it is 'threaded in explicitly (rather than #including ui/display_ui.h directly) so benchmark/ doesn't depend upward on ui/'; benchmark.cpp no longer includes ui/display_ui.h, and main.cpp:64 passes uiShowProgress as the callback argument to runQuickBenchmark()",
+        "uiShowProgress()'s signature in src/ui/display_progress.cpp matches BenchmarkProgressFn exactly (title, stage, done, total, liveMBs), so the callback boundary is honest, not just plausible",
+        "benchmark/benchmark_internal.h explicitly documents why allocateDmaBuffer() lives in hardware/sd_card.h instead of benchmark/: 'hardware/ can't depend back on benchmark/' -- the shared-primitive placement decision is justified in writing, not accidental",
+        "platformio.ini's [env:native] build_src_filter allowlists only bench_math.cpp, card_format.cpp, card_identity.cpp, touch_calibration.cpp, and ui_geometry.cpp -- exactly the files whose header comments claim zero Arduino/TFT_eSPI dependency -- so the pure-logic/hardware-dependent boundary is enforced by the build, not just convention",
+        "sd_card.cpp holds SdFs, CardInfo, and AttemptResult[] as file-static globals exposed only via getSd()/getCardInfo()/getAttempts() getters; sd_card.h documents why this getter-over-state shape was chosen over a return value (the diagnostics screen needs to query qualification history at an arbitrary later time)",
+        "config.h and app_types.h are the two highest-importer files (10 and 9) but contain only constexpr constants and POD structs/enums with no logic and near-zero fan-out (avg_fan_out 0.5 per structure data), so their high import count does not create logic blast radius -- adding a field doesn't ripple, unlike a true hub module with behavior",
+        "ui/*.cpp files each explicitly #include ../hardware/card_format.h and card_identity.h rather than relying on sd_card.h's transitive include, so declared dependencies match actual usage"
+      ],
+      "impact_scope": "codebase",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "The one remaining soft spot is that SD card/session state (SdFs instance, CardInfo, per-speed AttemptResult array) is coordinated across modules through file-static globals behind getters rather than an explicit handle passed to callers. It is well-documented and defensible for a device with exactly one physical SD card, so it isn't flagged as a defect requiring a fix, but it's a real instance of the 'coordination through shared mutable state' pattern this dimension watches for, and is the reason the score isn't a full 100."
+    }
+  },
+  "dimension_judgment": {
+    "cross_module_architecture": {
+      "dimension_character": "Dependency direction is now clean and consistently enforced: core/ holds pure data with no logic and near-zero fan-out despite high import counts, hardware/ builds on core/, and benchmark/ and ui/ both build on hardware/ without depending on each other. The one previously flagged violation -- benchmark.cpp reaching directly into ui/display_ui.h -- has been eliminated by threading a BenchmarkProgressFn callback through the benchmark layer, with main.cpp left as the single, obvious place where the two layers are wired together. The remaining architecturally notable choice, SD hardware state held in file-static globals behind getters, is explicit, documented, and proportionate to a single-hardware-instance embedded device rather than an emergent coupling problem.",
+      "score_rationale": "This sits solidly in the 90s on the global anchors: a developer can trust the dependency graph, there are no cycles, hub modules with real behavior, or repeated boundary violations, and the sole historical cross_module_architecture issue is confirmed fixed with a documented, honestly-typed callback rather than a workaround. It stops short of 100 only because SD card state is still coordinated through module-level globals instead of an explicit handle -- a deliberate and reasonable but still real instance of shared-mutable-state coordination -- which keeps it from being fully exemplary."
+    }
+  },
+  "issues": [],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "cross_module_architecture": {
+      "add": [
+        {
+          "header": "Clean core -> hardware -> {benchmark, ui} layering",
+          "description": "All includes across src/ follow one direction (core/ pure data, hardware/ builds on core/, benchmark/ and ui/ both build on hardware/ but never on each other); main.cpp is the only file that includes both a benchmark/ and a ui/ header, making it the sole cross-layer composition point.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "benchmark/ decoupled from ui/ via BenchmarkProgressFn callback",
+          "description": "benchmark.cpp previously called uiShowProgress() directly; it now takes a BenchmarkProgressFn function-pointer parameter (declared in benchmark.h with a comment explaining the choice), and main.cpp supplies uiShowProgress as the concrete callback, so benchmark/ no longer includes or depends on ui/display_ui.h.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Native test build enforces the pure-logic/hardware boundary",
+          "description": "platformio.ini's [env:native] build_src_filter only compiles files that claim (in their own header comments) zero Arduino/TFT_eSPI dependency -- bench_math, card_format, card_identity, touch_calibration, ui_geometry -- so the hardware-independence boundary these files assert is checked by the build, not just by convention.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "config.h/app_types.h are high-fan-in but zero-logic",
+          "description": "The two files with the most importers (config.h: 10, app_types.h: 9) contain only constexpr constants and POD structs/enums with no functions and near-zero fan-out, so their wide import count doesn't create the blast radius a true hub module with behavior would -- they read as a shared core-types layer, not an architecture smell.",
+          "settled": true,
+          "positive": false
+        },
+        {
+          "header": "SD card state as a documented global singleton",
+          "description": "sd_card.cpp keeps SdFs/CardInfo/AttemptResult[] as file-static globals exposed via getSd()/getCardInfo()/getAttempts(); sd_card.h documents why this getter-over-state shape (vs. a return value) fits the diagnostics screen's need to query qualification history at an arbitrary later time. Deliberate and appropriate for a single physical SD card, but still a real instance of cross-module coordination through shared mutable state.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

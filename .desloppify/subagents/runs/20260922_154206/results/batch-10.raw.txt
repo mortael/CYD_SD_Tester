@@ -1,0 +1,67 @@
+{
+  "batch": "test_strategy",
+  "batch_index": 10,
+  "assessments": {
+    "test_strategy": 87.0
+  },
+  "dimension_notes": {
+    "test_strategy": {
+      "evidence": [
+        "platformio.ini's env:native build_src_filter now compiles bench_math.cpp, card_format.cpp, card_identity.cpp, touch_calibration.cpp, and ui_geometry.cpp -- every hardware-independent pure-logic module in src/ now has a corresponding native Unity suite under test/.",
+        "test/test_ui_geometry/test_ui_geometry.cpp (9 tests) exercises scaleGraphMaxSpeed()/scalePointCoords()/buildScaleSummary() -- the previously-flagged untested SPI-scale-graph math -- including edge cases: single-point graphs (no divide-by-zero), all-points-failed floor value, first-successful-point summary selection, and empty-summary-when-none-succeeded.",
+        "test/test_bench_math, test_card_identity, test_card_format (not re-read in full but referenced by build filter), test_touch_calibration, and test_app_types all use direct value assertions (TEST_ASSERT_EQUAL_*, TEST_ASSERT_FLOAT_WITHIN) against known vectors or hand-computed expected values -- zero snapshot-style tests found across any suite.",
+        "Tests are self-contained pure-function calls with no timing, ordering, or external-state dependencies (e.g. test_touch_calibration checks TS_X_MIN/MAX clamping and axis-swap purely via mapTouchToScreen() inputs/outputs).",
+        ".github/workflows/native-tests.yml runs `pio test -e native` on push/PR, so the suite is enforced in CI rather than being an aspirational/manual step.",
+        "Remaining untested code (main.cpp's setup/loop, scanCard()'s multi-speed qualification loop in sd_card.cpp, runQuickBenchmark()'s prealloc/write/read/verify branching in benchmark.cpp, runSpiScalingBenchmark(), and the display_*.cpp draw routines) is inherently hardware-coupled (Arduino.h, SdFat, TFT_eSPI) with no mock/simulation harness in the repo, so it has zero automated coverage and relies entirely on physical-hardware validation.",
+        "The hardware-coupled orchestration functions (scanCard's per-speed attempt state machine, runQuickBenchmark's nested prealloc->write->read->verify->cleanup sequencing) are exactly the kind of core business logic where a misordered branch or dropped early-return would regress silently; they call into already-tested pure helpers (formatSpiClock, computeBarFillWidth, recordSdError-adjacent logic) but their own control flow is unverified.",
+        "cardTypeName()/fsName() in sd_card.cpp are pure switch-on-primitive lookups but are intentionally left out of the native test filter because they require SdFat's SD_CARD_TYPE_*/FAT_TYPE_* constants; this tradeoff is explicitly documented in the header comments rather than being an oversight."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "architectural_change",
+      "confidence": "high",
+      "issues_preventing_higher_score": "No integration-level tests exist across module boundaries or for the hardware-coupled orchestration functions (scanCard()'s qualification loop, runQuickBenchmark()'s multi-stage I/O sequencing, main.cpp's event loop) -- these remain fully reliant on manual/physical-hardware validation since building a native mock harness for SdFat/TFT_eSPI/Arduino would be a substantial architectural investment not clearly justified for a project this size."
+    }
+  },
+  "dimension_judgment": {
+    "test_strategy": {
+      "dimension_character": "The codebase now has systematic, well-designed unit coverage for every piece of pure, hardware-independent logic -- both previously-flagged gaps (untested SPI-scale-graph math, stale CLAUDE.md claiming no tests exist) are fully resolved, with 9 new edge-case-driven tests for the extracted geometry/graph math and a CI workflow enforcing the suite. Test quality itself is strong throughout: value-based assertions against known vectors, explicit edge-case coverage (divide-by-zero guards, all-failed floors, boundary clamping), zero snapshot tests, and no fragility from timing/ordering/external state. The residual gap is structural rather than a quality lapse: the hardware-bound orchestration logic (SD qualification state machine, benchmark I/O sequencing, main loop) has no automated coverage at all, leaving a developer without a safety net specifically in the core control-flow paths that call the well-tested math helpers.",
+      "score_rationale": "This sits solidly above the 80 'important paths lack coverage' anchor because the codebase has done real, demonstrable work to extract and test every testable unit, and the test suite itself is exemplary in design (no brittleness, no snapshot overuse, thorough edge cases) -- but it falls short of 90+ because the orchestration/control-flow layer (scanCard, runQuickBenchmark, the touch/menu event loop) is genuinely untested core logic, not just low-value glue, so a developer changing that layer still can't lean on CI to catch a regression."
+    }
+  },
+  "issues": [],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "test_strategy": {
+      "add": [
+        {
+          "header": "All extractable pure logic now has native Unity coverage",
+          "description": "bench_math, card_format, card_identity, touch_calibration, ui_geometry, and app_types are each covered by a dedicated native test suite compiled via platformio.ini's env:native build_src_filter, closing every previously-identified test gap in hardware-independent code.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Tests are value-based with strong edge-case coverage, no snapshots",
+          "description": "Every suite asserts concrete expected values (known CRC vectors, hand-computed geometry, boundary clamps) and explicitly exercises edge cases like divide-by-zero guards and all-failed states, rather than relying on snapshot comparisons -- this keeps the suite resistant to false failures from incidental implementation changes.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "CI enforces the native test suite on every push/PR",
+          "description": ".github/workflows/native-tests.yml runs `pio test -e native`, so the test suite is a hard gate rather than a suite developers must remember to run manually.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Hardware-coupled orchestration logic has zero automated coverage",
+          "description": "scanCard()'s per-speed qualification loop, runQuickBenchmark()'s prealloc/write/read/verify/cleanup sequencing, runSpiScalingBenchmark(), and main.cpp's event loop all require Arduino/SdFat/TFT_eSPI and have no native-testable path or mock harness, so this control-flow layer relies entirely on physical-hardware validation even though it is core business logic.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

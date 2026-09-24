@@ -1,0 +1,65 @@
+{
+  "batch": "initialization_coupling",
+  "batch_index": 16,
+  "assessments": {
+    "initialization_coupling": 93.0
+  },
+  "dimension_notes": {
+    "initialization_coupling": {
+      "evidence": [
+        "main.cpp::setup() runs initDisplay(); initTouch(); initSdHardware(); rescan(); in a single, linear, readable sequence with no hidden ordering — a developer can see the entire boot order in one place.",
+        "display_ui_internal.cpp's tft() returns a function-local static TFT_eSPI instance (Meyer's singleton), so the TFT object is safe to reference from any translation unit regardless of static-initialization order, avoiding the classic SIOF risk entirely.",
+        "hardware/sd_card.cpp keeps sd/info/attempts/cid/csd as file-scope static globals behind accessor functions (getSd(), getCardInfo(), getAttempts()); every consumer gates on card.cardOk/card.volumeOk or sd.card() rather than assuming initSdHardware()/scanCard() has already run, so misordering fails safely instead of crashing.",
+        "benchmark/benchmark_raw.cpp's rawReadAtCurrentSpeed() checks `if (!sd.card()) return false;` before touching the shared SdFs singleton — the previously-flagged unchecked dereference is fixed.",
+        "benchmark/spi_scale_benchmark.cpp's runSpiScalingBenchmark() calls scanCard() on both the early-failure path and the normal end-of-loop path to restore the shared SdFs singleton's state; this hidden side effect is now documented both on the declaration in benchmark.h ('Side effect: re-runs the full SPI qualification/mount scan...') and inline at the call site — the previously-flagged coupling defect is fixed.",
+        "core/config.h contains only constexpr compile-time constants (pins, sizes, speed tables) — no environment reads, no runtime-computed globals, no getter/stale-snapshot duplication.",
+        "No module reads another module's global before that module's init*() has plausibly run in the actual call graph; scanCard()/getSd()/getCardInfo() are only reachable from main.cpp after initSdHardware(), and tft()-based UI functions are only reachable after initDisplay().",
+        "holistic_context.scan_evidence.mutable_globals was empty for this run — no mechanical concern signals to adjudicate for this dimension."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "Two singleton hardware objects use different initialization styles for no documented reason: sd_card.cpp's SdFs/CardInfo/AttemptResult globals are eagerly constructed as file-scope statics (built before setup() runs, per Arduino's normal startup), while display_ui_internal.cpp's TFT_eSPI instance is lazily constructed inside the tft() accessor. Both are safe in practice, but the inconsistency means a developer can't predict from one singleton's pattern how the next one is built."
+    }
+  },
+  "dimension_judgment": {
+    "initialization_coupling": {
+      "dimension_character": "Boot order lives entirely in main.cpp's setup(), which is short, linear, and hides nothing. Shared hardware state (the SdFs/CardInfo globals in sd_card.cpp, the TFT_eSPI singleton behind tft()) is reached only through accessor functions, and callers defensively check cardOk/volumeOk/sd.card() rather than trusting call order blindly. The two init-coupling defects a prior review round found — the SPI-scaling benchmark's implicit rescan and the unchecked sd.card() dereference in rawReadAtCurrentSpeed() — are both fixed and now documented at their declarations, so this round found no fresh instances of that failure class.",
+      "score_rationale": "This sits near the top of the scale (anchors: 90 = mostly stable with limited boot-order fragility, 100 = no boot-order worries at all): a developer can read setup() once and trust the entire hardware bring-up sequence, and the defensive gating on card/volume state prevents the 'used before ready' bug class the 80-anchor describes. It stops short of 100 only because the two hardware singletons (SdFs-based globals vs. the lazy tft() accessor) are constructed with genuinely different patterns without any documented reason, a small but real inconsistency a new contributor adding a third singleton would have to arbitrate."
+    }
+  },
+  "issues": [],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "initialization_coupling": {
+      "add": [
+        {
+          "header": "Linear, single-site boot sequence in main.cpp",
+          "description": "setup() calls initDisplay(), initTouch(), initSdHardware(), then rescan() in a flat, unconditional sequence with no branching or lazy/conditional init paths, so the entire hardware bring-up order is visible in one ~10-line function.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "TFT singleton uses lazy function-local static",
+          "description": "tft() in display_ui_internal.cpp wraps a function-local static TFT_eSPI instance instead of a file-scope global, so the object is constructed on first use rather than at ambiguous cross-TU static-init time — this sidesteps static-initialization-order-fiasco risk even though the codebase has only one entry point.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "SD hardware globals gated by state flags, not call order",
+          "description": "sd_card.cpp exposes its SdFs/CardInfo/AttemptResult statics only through getSd()/getCardInfo()/getAttempts(), and every consumer (runQuickBenchmark, rawReadAtCurrentSpeed, removeTestFile) checks cardOk/volumeOk/sd.card() before use rather than assuming initSdHardware()/scanCard() already ran — misordering degrades gracefully (early return) instead of crashing.",
+          "settled": true
+        },
+        {
+          "header": "Eager vs. lazy singleton construction style differs across modules",
+          "description": "sd_card.cpp's hardware globals (sd, info, attempts, cid, csd) are plain file-scope statics built at C++ static-init time, while display_ui_internal.cpp's TFT_eSPI instance is built lazily inside its accessor function — both are safe given the single-entry-point boot sequence, but the pattern choice isn't consistent across the two singleton call sites.",
+          "settled": false
+        }
+      ]
+    }
+  }
+}

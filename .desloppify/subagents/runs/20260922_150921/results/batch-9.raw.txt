@@ -1,0 +1,72 @@
+{
+  "batch": "mid_level_elegance",
+  "batch_index": 9,
+  "assessments": {
+    "mid_level_elegance": 91.5
+  },
+  "dimension_notes": {
+    "mid_level_elegance": {
+      "evidence": [
+        "src/core/app_types.h is the single shared header for every cross-module data shape (AttemptResult, CardInfo, BenchmarkResult, SpiScaleResult/SpiScalePoint) — hardware/, benchmark/, and ui/ all translate through these same structs with no per-module duplicate shapes.",
+        "Pure translation/formatting helpers are isolated into their own files with an explicit 'no hardware/Arduino dependency, safe to unit-test' comment and a matching test/ directory: card_format.h/.cpp, card_identity.h/.cpp, ui_geometry.h/.cpp, bench_math.h/.cpp, touch_calibration.h/.cpp — each is the one obvious place its translation logic lives.",
+        "Every UI screen follows the same draw()/hitTest() pairing convention (uiDrawHome/uiHitTestHome, uiDrawBenchMenu/uiHitTestBenchMenu), each hitTest taking (x, y) and returning a plain enum action, so main.cpp's orchestration loop is a uniform, predictable composition across all screens (src/main.cpp lines 24-150).",
+        "sd_card.h documents, at the declaration, exactly why scanCard() returns a bool nobody checks while exposing state via getters (persistent, arbitrarily-re-queried diagnostics data) versus why runSpiScalingBenchmark() instead returns a one-shot SpiScaleResult — the two historically-flagged mid_level_elegance issues (accidental transitive include of card_format/card_identity via sd_card.h; runSpiScalingBenchmark()'s undocumented rescan side effect) are both resolved: every ui/ and benchmark/ file that calls card_format/card_identity now includes those headers directly, and the rescan is documented on both the .h declaration and inline at the call site in spi_scale_benchmark.cpp.",
+        "uiShowProgress()'s done==0 parameter convention ('No hidden screen state: done == 0 explicitly starts a new progress screen', display_progress.cpp line 15-19) makes the repeated-call contract between benchmark.cpp and the UI layer explicit rather than relying on internal screen state.",
+        "benchmark_internal.h documents the dependency-direction rule at the seam itself ('DMA buffer allocation is shared from ../hardware/sd_card.h instead, since hardware/ can't depend back on benchmark/'), rather than leaving it implicit.",
+        "One remaining asymmetry: benchmark.cpp (runQuickBenchmark/runChunkedIo) calls uiShowProgress() directly rather than routing progress through the main.cpp orchestrator that calls it — the only benchmark/->ui coupling edge in the import graph — so progress reporting bypasses the otherwise clean main-as-composer pattern seen everywhere else."
+      ],
+      "impact_scope": "subsystem",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "The one recurring friction point is benchmark/'s direct call into ui/ for live progress display (uiShowProgress inside runChunkedIo/runQuickBenchmark), which breaks the otherwise uniform pattern of main.cpp as the sole composer of hardware/benchmark/ui collaborators; it is minor, well-contained, and arguably the pragmatic choice for a single-threaded embedded loop, but it is a real boundary crossing not present elsewhere in the codebase."
+    }
+  },
+  "dimension_judgment": {
+    "mid_level_elegance": {
+      "dimension_character": "Handoffs in this codebase are unusually deliberate for its size: one shared data-shape header, isolated and independently-tested pure translation helpers at every hardware/UI boundary, a uniform draw/hitTest pairing convention across all screens, and boundary side effects (like scanCard's hidden rescan) documented directly on the declarations that expose them. The two mid_level_elegance issues from the prior review round (accidental transitive includes, an undocumented rescan side effect) are both durably fixed rather than papered over. The only remaining wrinkle is benchmark/ calling directly into ui/ for progress updates, a single, well-scoped exception to an otherwise consistent orchestration pattern.",
+      "score_rationale": "This sits above the 90 anchor ('mostly good seams with minor friction') because the seam design is not just consistent but explicitly self-documenting at nearly every boundary, and previously-identified glue-code entropy has been structurally resolved rather than just reformatted. It falls short of 100 because the benchmark->ui progress-reporting call is a genuine, if minor, deviation from the main-as-composer pattern used everywhere else, and the global getCardInfo()/getSd() singleton handoff — while documented — still makes cross-module state implicit rather than passed explicitly."
+    }
+  },
+  "issues": [],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "mid_level_elegance": {
+      "add": [
+        {
+          "header": "Single shared app_types.h for all cross-module data shapes",
+          "description": "CardInfo, AttemptResult, BenchmarkResult, and SpiScaleResult/SpiScalePoint are defined once in src/core/app_types.h and passed by const-reference across hardware/, benchmark/, and ui/ with no per-module duplicate or adapter structs — the one obvious place boundary data is shaped.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Pure translation helpers isolated from hardware, each unit-tested",
+          "description": "card_format, card_identity, ui_geometry, bench_math, and touch_calibration each hold one module's boundary-crossing translation logic (byte/clock formatting, vendor/stage lookups, hit-testing, coordinate mapping) in files explicitly marked hardware-independent and mirrored by a test/test_<name> host test — translation happens in one obvious, verifiable place rather than being inlined at call sites.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Uniform draw()/hitTest() pairing convention across UI screens",
+          "description": "Every interactive screen (Home, BenchMenu) exposes a uiDraw*()/uiHitTest*(x,y) pair returning a plain enum action, letting main.cpp's orchestration loops treat every screen identically — a predictable, unsurprising handoff shape reused rather than reinvented per screen.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Boundary side effects documented at the declaration, not just in commit history",
+          "description": "scanCard()'s getter-vs-return-value design and runSpiScalingBenchmark()'s hidden rescan are both explained directly in sd_card.h/benchmark.h doc comments (why persistent state fits one use case and a one-shot result fits the other), so the previously-flagged undocumented side effects are now durably visible to any future reader, not just fixed once.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "benchmark/ calls directly into ui/ for live progress display",
+          "description": "runChunkedIo()/runQuickBenchmark() in benchmark.cpp call uiShowProgress() directly rather than the orchestrator (main.cpp) mediating progress updates, the only benchmark->ui edge in the import graph. This is a pragmatic choice for a single-threaded embedded loop (no callback/async machinery needed) but is a real exception to the otherwise consistent main-as-composer pattern.",
+          "settled": false,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

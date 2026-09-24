@@ -1,0 +1,59 @@
+{
+  "batch": "incomplete_migration",
+  "batch_index": 14,
+  "assessments": {
+    "incomplete_migration": 97.0
+  },
+  "dimension_notes": {
+    "incomplete_migration": {
+      "evidence": [
+        "No TODO/FIXME/DEPRECATED/legacy/migrate markers exist anywhere under src/ (grep across all .cpp/.h returned zero matches; only third-party libdeps contain such markers)",
+        "README.md documents three prior migrations (BENCH+SCALE button merge into one BENCH menu, filesystemBytes -> filesystemDataBytes rename, removal of dead experimental raw-benchmark toggles) and grepping for the old symbol names (filesystemBytes, lastTitle, rawChunk, bestChunk) finds zero leftover references in src/",
+        "display_ui.h's HomeAction/BenchMenuAction enums reflect only the new unified BENCH menu (BenchmarkMenu, Quick, Scale, Back) with no residual separate-button code path",
+        "Only one static_cast exists nowhere in src/ -- all casts are uniformly C-style, confirming the previously-flagged stray static_cast (per historical_review_issues) was fully normalized rather than left as a half-finished cast-style migration",
+        "core/config.h defines two similar-looking speed tables, SPI_SPEEDS (20/10/4/1 MHz, used by scanCard()'s normal qualification) and SPI_SCALE_SPEEDS (40/20/10/4/1 MHz, used only by the SPI-scaling benchmark) -- this looks at first glance like an incomplete consolidation of one speed list into two, but README.md's 'v0.7.1' section and the surrounding code comments explicitly document it as a deliberate, permanent split (normal scans stop testing an unreliable 40MHz, the diagnostic scaling benchmark still probes it)",
+        "platformio.ini's two environments (env:native for host-run Unity tests via build_src_filter, env:cyd for the real firmware) are a clear, intentional, actively-maintained split rather than a stale or partial platform migration"
+      ],
+      "impact_scope": "codebase",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "The SPI_SPEEDS vs SPI_SCALE_SPEEDS parallel constant tables in src/core/config.h could momentarily read as an abandoned consolidation to a developer who hasn't yet found the explaining comment/README section; this is the only friction point found and it is already well-documented, not left ambiguous."
+    }
+  },
+  "dimension_judgment": {
+    "incomplete_migration": {
+      "dimension_character": "Incomplete migration is essentially a non-issue in this codebase: every migration described in README.md's version history (unifying the BENCH/SCALE buttons, renaming filesystemBytes to filesystemDataBytes, removing dead experimental raw-benchmark toggles, normalizing cast style) shows no leftover old-named symbols, orphaned files, or dual code paths anywhere in the current src/ tree. There are no deprecated markers, no stale migration TODOs, and no compatibility shims serving callers that no longer need them.",
+      "score_rationale": "This lands near the top of the global anchor scale (90=strong, 100=exemplary): a developer here would encounter zero dual-path confusion or deprecated-but-called code, which is what separates a 90 from higher. The only thing holding it back from a full 100 is a single spot (the two SPI speed-count tables) that requires a comment/README read to confirm it is intentional rather than incomplete cleanup -- a very minor, already-mitigated friction point rather than an actual defect, so no issues are filed against it."
+    }
+  },
+  "issues": [],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "incomplete_migration": {
+      "add": [
+        {
+          "header": "No migration debt markers anywhere in src/",
+          "description": "A repo-wide search for TODO/FIXME/DEPRECATED/legacy/migrate/shim across src/ and test/ returns zero hits; the only such markers in the whole working tree live in third-party .pio/libdeps sources, not project code.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Prior README-documented migrations are fully executed",
+          "description": "README.md's version history describes the BENCH/SCALE menu merge, the filesystemBytes->filesystemDataBytes rename, and removal of dead experimental raw-benchmark toggles; grepping for each old name/symbol confirms none remain in src/, so these are completed migrations, not ongoing ones with residue.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Dual SPI speed tables are a documented permanent split, not stale duplication",
+          "description": "core/config.h's SPI_SPEEDS (normal qualification, 20/10/4/1MHz) and SPI_SCALE_SPEEDS (diagnostic scaling benchmark, 40/20/10/4/1MHz) look like they could be an incomplete consolidation, but README.md's v0.7.1 notes and adjacent code comments explain the 40MHz split is intentional and permanent (normal scans stopped trusting 40MHz; the scaling benchmark keeps probing it as a diagnostic data point).",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

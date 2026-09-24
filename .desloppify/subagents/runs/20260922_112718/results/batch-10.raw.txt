@@ -1,0 +1,100 @@
+{
+  "batch": "test_strategy",
+  "batch_index": 10,
+  "assessments": {
+    "test_strategy": 82.0
+  },
+  "dimension_notes": {
+    "test_strategy": {
+      "evidence": [
+        "test/test_bench_math/test_bench_math.cpp covers crc32Update (known vector, empty input, split-chunk equivalence), throughputMBs (zero-time, scaling), preparePattern (determinism + formula spot-check), repeatedBufferCrc32 (single pass and partial-final-chunk), and spiEfficiencyPercent (full/half rate, zero-hz) — genuine boundary and edge-case coverage, not happy-path-only.",
+        "test/test_card_format, test_card_identity, test_touch_calibration, test_ui_geometry, test_app_types each exercise boundary conditions directly: the exact 1 GiB MiB/GiB cutoff in formatHumanBytes, half-open hitTestRect edges, computeBarFillWidth clamping when value exceeds max or max is 0, mapTouchToScreen clamping on out-of-range raw input, and CardInfo/BenchmarkResult default-value invariants (cleanupOk defaults true while every other bool defaults false) with a comment explaining why that default matters to display_ui/diagnostics.",
+        "platformio.ini defines env:native (host-native, Unity framework) restricted via build_src_filter to exactly the hardware-independent .cpp files (bench_math, card_format, card_identity, touch_calibration, ui_geometry) — a deliberate, correctly-scoped boundary between testable pure logic and untestable hardware I/O.",
+        "Zero snapshot-style tests anywhere in test/ — every assertion checks a specific computed value or string, so none of the snapshot-overuse or test-fragility patterns in the rubric are present.",
+        "All six test files call only the functions declared in the corresponding public header (card_format.h, card_identity.h, touch_calibration.h, ui_geometry.h, bench_math.h, app_types.h) — no reaching into statics or internal helpers, so tests are coupled to stable public contracts rather than implementation details.",
+        "No timing-, ordering-, or external-state-dependent assertions in any test file (no delay/sleep, no shared mutable fixture reused across tests, setUp/tearDown are no-ops) — the suite is fully deterministic.",
+        "CLAUDE.md's 'Build commands' section states 'No unit test suite exists — validation is by flashing to real hardware and observing the display,' which is flatly contradicted by the six env:native Unity suites under test/ and the explanatory comment at the top of platformio.ini. A developer trusting the project's own architecture doc would not discover `pio test -e native` exists.",
+        "No CI configuration exists anywhere in the repo (no .github/workflows) to run `pio test -e native` automatically, so the host-native suite is only a manual, easily-forgotten safety net rather than an enforced gate.",
+        "The hardware-coupled critical paths — sd_card.cpp's scanCard() speed-qualification/CID/CSD/read sequencing, benchmark.cpp's write→read→verify guard chain, spi_scale_benchmark.cpp's per-speed loop, and touch.cpp's bit-banged SPI reads — have zero test coverage, but this is a direct, unavoidable consequence of no Arduino/SdFat/TFT_eSPI mock layer existing; the logic in these files is also fairly direct (linear guard clauses, no deep branching) which somewhat mitigates the risk of the gap."
+      ],
+      "impact_scope": "subsystem",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "CLAUDE.md's build-commands section falsely claims no unit test suite exists, and the existing native test suite has no CI enforcement, so it functions only as an opt-in local check."
+    }
+  },
+  "dimension_judgment": {
+    "test_strategy": {
+      "dimension_character": "Where tests exist, they are genuinely good: every hardware-independent pure-logic module is covered with deterministic, boundary-focused Unity tests that assert on public contracts rather than internals, with no snapshot tests and no fragility patterns. The gaps that remain are structurally justified (no mock layer for Arduino/SdFat/TFT_eSPI) rather than negligence, but a developer's confidence is undermined by two avoidable problems: CLAUDE.md actively misinforms readers that no test suite exists at all, and the real suite has no CI wiring, so it depends entirely on a developer remembering to run `pio test -e native`.",
+      "score_rationale": "This sits just below the 'strong' anchor (90): the tested surface is close to exemplary in design and rigor, matching the 90-anchor's 'small strategic gaps that don't undermine confidence' for the pure-logic layer, but the stale CLAUDE.md claim and absent CI are concrete, fixable defects that create real friction — a new contributor following the documented build commands would never learn the tests exist. Untested hardware-coupled orchestration is treated per the review's guidance as accepted, necessary debt rather than a scoring penalty, which keeps the score from dropping toward the 'significant drag' range."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "test_strategy",
+      "identifier": "stale_claude_md_no_tests_claim",
+      "summary": "CLAUDE.md says no unit test suite exists, contradicting the real env:native Unity suite",
+      "related_files": ["CLAUDE.md", "platformio.ini"],
+      "evidence": [
+        "CLAUDE.md's 'Build commands' section: 'No unit test suite exists — validation is by flashing to real hardware and observing the display.'",
+        "platformio.ini defines env:native with test_framework = unity and a build_src_filter scoping in exactly the pure-logic .cpp files, with a comment: 'Host-native unit tests for the hardware-independent pure-logic modules ... Run with: pio test -e native.'",
+        "Six test suites exist under test/ (test_app_types, test_bench_math, test_card_format, test_card_identity, test_touch_calibration, test_ui_geometry) covering that logic."
+      ],
+      "suggestion": "Update CLAUDE.md's Build commands section to mention `pio test -e native` and name the modules it covers (bench_math, card_format, card_identity, touch_calibration, ui_geometry, app_types), instead of stating no test suite exists.",
+      "confidence": "high",
+      "impact_scope": "module",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "test_strategy",
+      "identifier": "no_ci_for_native_tests",
+      "summary": "No CI runs the host-native test suite; it is a manual, unenforced safety net",
+      "related_files": ["platformio.ini"],
+      "evidence": [
+        "No .github/workflows directory or other CI configuration exists in the repository.",
+        "env:native in platformio.ini is fully capable of running headless (`pio test -e native`) but nothing invokes it automatically on push or PR."
+      ],
+      "suggestion": "Add a minimal GitHub Actions workflow that runs `pio test -e native` on push/PR so regressions in bench_math, card_format, card_identity, touch_calibration, and ui_geometry are caught automatically rather than only when a developer remembers to run the suite locally.",
+      "confidence": "medium",
+      "impact_scope": "codebase",
+      "fix_scope": "single_edit"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "Documentation (CLAUDE.md) was not updated when the env:native test suite was introduced, so it still reflects a pre-testing state of the project."
+    ],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "test_strategy": {
+      "add": [
+        {
+          "header": "Pure-logic modules have thorough boundary-focused unit tests",
+          "description": "bench_math, card_format, card_identity, touch_calibration, ui_geometry, and app_types are each covered by a host-native Unity suite that asserts on boundary values (GiB/MiB cutoff, clamping, out-of-range clamping, zero-division guards) and documents non-obvious default-value invariants (e.g. BenchmarkResult::cleanupOk defaulting true) rather than just happy-path values.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "No snapshot tests and no test-production coupling",
+          "description": "Every test asserts a specific computed value or string against the module's declared public header API; none reach into internals or rely on golden-file/snapshot comparison, so the suite is naturally resistant to implementation-detail churn.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Hardware-coupled critical paths are untested by structural necessity",
+          "description": "scanCard()'s SPI qualification sequencing, benchmark.cpp's write/read/verify guard chain, the SPI scaling loop, and touch's bit-banged SPI reads have zero coverage, but no mock Arduino/SdFat/TFT_eSPI layer exists in the project, making this accepted debt rather than a strategy failure; the guard-clause style in these files is direct enough to partially offset the risk.",
+          "settled": true,
+          "positive": false
+        },
+        {
+          "header": "CLAUDE.md misstates that no test suite exists",
+          "description": "The project's own architecture doc tells a developer to validate purely by flashing hardware, actively hiding the existence of the env:native Unity suite defined in platformio.ini — a documentation/reality mismatch specific to how a developer discovers and trusts the test strategy.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

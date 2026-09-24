@@ -1,0 +1,110 @@
+{
+  "batch": "mid_level_elegance",
+  "batch_index": 9,
+  "assessments": {
+    "mid_level_elegance": 78.0
+  },
+  "dimension_notes": {
+    "mid_level_elegance": {
+      "evidence": [
+        "src/hardware/sd_card.h includes \"../util/card_format.h\" and \"../util/card_identity.h\" even though none of its own declared functions (initSdHardware, scanCard, getSd, getCardInfo, getAttempts, getAttemptCount, makeSdConfig, cardTypeName) need those headers' types.",
+        "src/ui/display_ui.cpp, src/ui/display_results.cpp, src/ui/display_diagnostics.cpp, src/ui/diagnostics.cpp, src/benchmark/benchmark.cpp, and src/benchmark/spi_scale_benchmark.cpp all call formatHumanBytes/formatSpiClock/attemptStageName/identityCheckName without including util/card_format.h or util/card_identity.h directly; they compile only because sd_card.h happens to re-export those headers transitively.",
+        "src/benchmark/spi_scale_benchmark.cpp's runSpiScalingBenchmark() calls scanCard() (twice: on allocation failure and unconditionally at the end) to restore global SD/CardInfo state, but this side effect is invisible from benchmark.h's declared signature (SpiScaleResult runSpiScalingBenchmark();) and from the call site in main.cpp's runBenchMenu().",
+        "By contrast, main.cpp's rescan()/runBenchMenu()/setup()/loop() and the CardInfo/AttemptResult/BenchmarkResult/SpiScaleResult DTOs in core/app_types.h show the seams working well: orchestration reads as straight composition and cross-boundary data is explicit and minimal."
+      ],
+      "impact_scope": "subsystem",
+      "fix_scope": "multi_file_refactor",
+      "confidence": "medium",
+      "issues_preventing_higher_score": "The transitive-include hub pattern recurs across six ui/ and benchmark/ files, and one benchmark function has an undocumented-at-the-call-site global-state side effect; both keep the score out of the 90s despite otherwise clean orchestration."
+    }
+  },
+  "dimension_judgment": {
+    "mid_level_elegance": {
+      "dimension_character": "Handoffs across module boundaries are mostly explicit and minimal: main.cpp is pure composition of hardware/ui/benchmark calls, and CardInfo/BenchmarkResult/SpiScaleResult structs carry all cross-boundary data with no ad-hoc mapping layer. That good foundation is undercut by a systemic seam flaw: UI and benchmark files rely on an accidental transitive include of util/card_format.h and util/card_identity.h through sd_card.h rather than declaring the dependency directly, plus one benchmark function that quietly performs a full hardware rescan as a side effect not visible in its own contract.",
+      "score_rationale": "The orchestration layer and DTO-based handoffs alone would sit in the low 90s per the dimension anchors, but the transitive-include pattern is not an isolated slip — it repeats identically across six of the ui/ and benchmark/ implementation files, meaning a developer cannot trust any one file's #include list to show what it actually depends on, matching the 80-anchor's 'why is this different' friction. Combined with the hidden rescan side effect in runSpiScalingBenchmark(), this pulls the score down into the high-70s 'mixed' range rather than 'solid but uneven'."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "mid_level_elegance",
+      "identifier": "transitive_util_includes_via_sd_card_header",
+      "summary": "UI/benchmark files consume card_format and card_identity utilities only via an accidental transitive include through sd_card.h",
+      "related_files": [
+        "src/hardware/sd_card.h",
+        "src/ui/display_ui.cpp",
+        "src/ui/display_results.cpp",
+        "src/ui/display_diagnostics.cpp",
+        "src/ui/diagnostics.cpp",
+        "src/benchmark/benchmark.cpp",
+        "src/benchmark/spi_scale_benchmark.cpp"
+      ],
+      "evidence": [
+        "src/hardware/sd_card.h includes \"../util/card_format.h\" and \"../util/card_identity.h\", but none of sd_card.h's own declared functions use types from either header.",
+        "src/ui/display_ui.cpp calls formatHumanBytes() and formatSpiClock() and only #includes \"../hardware/sd_card.h\" (never util/card_format.h).",
+        "src/ui/display_diagnostics.cpp and src/ui/diagnostics.cpp call formatSpiClock/attemptStageName/identityCheckName the same way, through sd_card.h alone.",
+        "src/benchmark/benchmark.cpp and src/benchmark/spi_scale_benchmark.cpp call formatSpiClock without including util/card_format.h directly either."
+      ],
+      "suggestion": "Add explicit #include \"../util/card_format.h\" and/or \"../util/card_identity.h\" to each file that actually calls those functions (display_ui.cpp, display_results.cpp, display_diagnostics.cpp, diagnostics.cpp, benchmark.cpp, spi_scale_benchmark.cpp), and remove the two util includes from sd_card.h since its own declarations don't need them — sd_card.cpp would then add its own direct includes for the functions it uses.",
+      "confidence": "high",
+      "impact_scope": "subsystem",
+      "fix_scope": "multi_file_refactor",
+      "root_cause_cluster": "hub_header_reexport"
+    },
+    {
+      "dimension": "mid_level_elegance",
+      "identifier": "hidden_rescan_side_effect_in_spi_scaling",
+      "summary": "runSpiScalingBenchmark() silently triggers a full card rescan as a side effect not visible in its signature",
+      "related_files": [
+        "src/benchmark/spi_scale_benchmark.cpp",
+        "src/benchmark/benchmark.h"
+      ],
+      "evidence": [
+        "runSpiScalingBenchmark() (declared in benchmark.h as `SpiScaleResult runSpiScalingBenchmark();`) calls scanCard() internally — once on early buffer-allocation failure and once unconditionally at the end — to restore global SD/CardInfo state that the scaling loop disturbed.",
+        "main.cpp's runBenchMenu() calls runSpiScalingBenchmark() and only consumes the returned SpiScaleResult; nothing at the call site indicates that global hardware state (what getCardInfo() returns afterward) was also refreshed as a side effect."
+      ],
+      "suggestion": "Move the restorative scanCard() call out of runSpiScalingBenchmark() and into the caller in main.cpp's runBenchMenu() right after the call returns, so the rescan is visible at the orchestration layer instead of hidden inside a function whose name and return type suggest a pure measurement.",
+      "confidence": "medium",
+      "impact_scope": "module",
+      "fix_scope": "single_edit"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "sd_card.h was grown into a small hub that re-exports unrelated utility headers (card_format.h, card_identity.h) purely for consumer convenience, so several ui/ and benchmark/ files never had to declare their real dependencies."
+    ],
+    "likely_symptoms": [
+      "transitive_util_includes_via_sd_card_header"
+    ],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "mid_level_elegance": {
+      "add": [
+        {
+          "header": "Struct DTOs form explicit boundary contracts",
+          "description": "CardInfo, AttemptResult, BenchmarkResult, and SpiScaleResult in core/app_types.h are essentially the only data that crosses hardware/benchmark/ui boundaries; they are passed by value or const reference with no ad-hoc mapper layer, so each seam's inputs/outputs are explicit and minimal.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "main.cpp reads as pure composition",
+          "description": "setup()/loop()/rescan()/runBenchMenu() in main.cpp just sequence calls to initTouch/initSdHardware/scanCard/getCardInfo/ui* functions with no business logic of their own, so a new developer can trace the whole app's control flow from this one file without tangled back-and-forth.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Pure-logic modules declare their testable boundary explicitly",
+          "description": "bench_math.h, card_format.h, card_identity.h, ui_geometry.h, and touch_calibration.h each carry a header comment stating they have no hardware/Arduino dependency and are unit-tested on host, giving each hardware/logic seam a clearly stated contract rather than leaving it implicit.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Benchmark loops call UI progress functions directly",
+          "description": "timedFileWrite/timedFileRead/verifyFile in benchmark.cpp call uiShowProgress() directly from inside their I/O loops rather than through a callback/observer abstraction. This crosses the benchmark->ui boundary directly, but is applied consistently everywhere progress is reported and avoids indirection ceremony that wouldn't pay for itself in this single-threaded firmware.",
+          "settled": true,
+          "positive": true
+        }
+      ]
+    }
+  }
+}

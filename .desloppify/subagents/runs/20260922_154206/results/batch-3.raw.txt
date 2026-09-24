@@ -1,0 +1,86 @@
+{
+  "batch": "convention_outlier",
+  "batch_index": 3,
+  "assessments": {
+    "convention_outlier": 91.0
+  },
+  "dimension_notes": {
+    "convention_outlier": {
+      "evidence": [
+        "sd_card.h:37-40 declares `const char* cardTypeName(uint8_t type, uint64_t capacityBytes);` wrapped one-arg-per-line, but sd_card.cpp:47 defines it on a single line: `const char* cardTypeName(uint8_t type, uint64_t capacityBytes) {`.",
+        "sd_card.h:43-45 declares `const char* fsName(uint8_t type);` wrapped, but sd_card.cpp:67 defines it single-line: `const char* fsName(uint8_t type) {` — even though the single-parameter makeSdConfig() in the very same file is wrapped in both header and definition.",
+        "card_identity.h:11-13 and :15-17 declare attemptStageName() and resolveVendor() wrapped one-arg-per-line, but card_identity.cpp:3 and :27 define both single-line, while the third function in that same file, identityCheckName(), is correctly wrapped to match its header (lines 74-76).",
+        "The codebase's dominant convention wraps every signature one-argument-per-line even for single-parameter functions — e.g. header(const char* title) in display_ui_internal.cpp/.h, scaleGraphMaxSpeed(const SpiScaleResult& result) in ui_geometry.cpp/.h, makeSdConfig(uint32_t hz) in sd_card.h/.cpp — confirming the four functions above are true outliers rather than an accepted short-signature exception.",
+        "No anonymous namespaces remain anywhere under src/ (grep for 'namespace' across src/ returns zero matches) — the previously-flagged touch_calibration.cpp anonymous-namespace outlier is fully resolved and `static` is now the uniform private-linkage convention across all .cpp files (touch.cpp, touch_calibration.cpp, sd_card.cpp, benchmark.cpp, display_ui.cpp, etc.).",
+        "touch.h/touch.cpp and touch_calibration.h/.cpp are now fully reformatted to one-arg-per-line, matching bench_math.*, card_format.*, ui_geometry.*, and benchmark_*.cpp — the previously flagged 'compact holdout' files are resolved.",
+        "Test directory layout is uniform: test_<module>/test_<module>.cpp mirrors the corresponding src/<domain>/<module>.cpp 1:1 across all 6 test modules (test_app_types, test_bench_math, test_card_format, test_card_identity, test_touch_calibration, test_ui_geometry), with no naming or placement exceptions."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "Four function definitions (cardTypeName, fsName in sd_card.cpp; attemptStageName, resolveVendor in card_identity.cpp) remain single-line, contradicting both their own wrapped header declarations and the codebase's otherwise near-universal one-arg-per-line signature convention."
+    }
+  },
+  "dimension_judgment": {
+    "convention_outlier": {
+      "dimension_character": "The codebase enforces an unusually strict, consistently-applied house style: every function signature — down to single-parameter ones — is wrapped one-argument-per-line in both headers and definitions, `static` (never anonymous namespaces) is used uniformly for private linkage, and test files mirror src/ modules 1:1. A prior cleanup pass eliminated the touch.*/touch_calibration.cpp compact-signature and anonymous-namespace outliers and most of sd_card.*/card_format.*/card_identity.* holdouts, but left four sibling functions (cardTypeName, fsName, attemptStageName, resolveVendor) still contradicting their own header declarations.",
+      "score_rationale": "This sits just below the 'strong' (90) anchor rather than 'solid but uneven' (80): the dominant convention holds almost everywhere a developer would look, so patterns learned in one file reliably transfer to the next, but the four residual compact definitions are a genuine, precisely-located style island sitting exactly where the codebase's own headers say otherwise — isolated friction rather than the recurring, area-wide drift the 80 anchor describes. It stays below 100 because those four functions are a live, uncorrected leftover from an otherwise-completed reformat pass, not a fully resolved matter."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "convention_outlier",
+      "identifier": "residual_compact_defs_sd_card_card_identity",
+      "summary": "cardTypeName/fsName/attemptStageName/resolveVendor are still defined single-line despite their own wrapped headers and the codebase-wide one-arg-per-line convention",
+      "related_files": [
+        "src/hardware/sd_card.cpp",
+        "src/hardware/sd_card.h",
+        "src/hardware/card_identity.cpp",
+        "src/hardware/card_identity.h"
+      ],
+      "evidence": [
+        "sd_card.cpp:47 `const char* cardTypeName(uint8_t type, uint64_t capacityBytes) {` is single-line while sd_card.h:37-40 declares it wrapped one-arg-per-line.",
+        "sd_card.cpp:67 `const char* fsName(uint8_t type) {` is single-line while sd_card.h:43-45 declares it wrapped, and the single-parameter makeSdConfig() in the same file is wrapped in both places.",
+        "card_identity.cpp:3 `const char* attemptStageName(AttemptStage stage) {` and card_identity.cpp:27 `const char* resolveVendor(uint8_t mid) {` are single-line while their header declarations, and their file-sibling identityCheckName() (which does match its header), are wrapped."
+      ],
+      "suggestion": "Reformat these four definitions to one-argument-per-line to match their own header declarations — the same treatment already applied to identityCheckName(), header(), and the touch.* files in the prior cleanup pass.",
+      "confidence": "high",
+      "impact_scope": "local",
+      "fix_scope": "single_edit",
+      "root_cause_cluster": "incomplete_signature_reformat_pass"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "The one-arg-per-line reformatting effort was applied file-by-file/finding-by-finding rather than via a single mechanical pass over every signature, so a few sibling functions in already-touched files (sd_card.cpp, card_identity.cpp) were skipped even though adjacent functions in the same files were fixed."
+    ],
+    "likely_symptoms": [
+      "residual_compact_defs_sd_card_card_identity"
+    ],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "convention_outlier": {
+      "add": [
+        {
+          "header": "Universal one-arg-per-line signature wrapping",
+          "description": "Every function signature in src/ — including single-parameter functions like header(), makeSdConfig(), and scaleGraphMaxSpeed() — is wrapped one-argument-per-line in both headers and definitions. This is the codebase's dominant, consistently-applied house style rather than a per-file preference, which is why the remaining compact definitions in sd_card.cpp/card_identity.cpp stand out as clear outliers.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "static, not anonymous namespaces, for private linkage",
+          "description": "All .cpp files use `static` for file-private helper functions; a grep for 'namespace' across src/ returns zero matches, confirming touch_calibration.cpp's former anonymous-namespace outlier is fully resolved and the convention is now uniform.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Residual compact definitions in sd_card.cpp and card_identity.cpp",
+          "description": "cardTypeName()/fsName() (sd_card.cpp) and attemptStageName()/resolveVendor() (card_identity.cpp) are still defined single-line despite their own headers declaring them wrapped one-arg-per-line — a leftover from the reformatting pass that fixed identityCheckName()/header() and touch.*/touch_calibration.cpp, but missed these four sibling functions.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "batch": "type_safety",
+  "batch_index": 20,
+  "assessments": {
+    "type_safety": 90.0
+  },
+  "dimension_notes": {
+    "type_safety": {
+      "evidence": [
+        "AttemptStage, HomeAction, and BenchMenuAction are all enum class and are consumed via exhaustive switch/comparison (main.cpp loop(), display_ui.cpp uiHitTestHome/uiHitTestBenchMenu, card_identity.cpp attemptStageName) with no raw int/string literal bypass of these enums.",
+        "Domain data (CardInfo, AttemptResult, BenchmarkResult, SpiScalePoint/SpiScaleResult in src/core/app_types.h) is modeled as plain typed structs with explicit field types and default member initializers -- there is no dict-like/Any bag anywhere in the codebase for this data to hide behind.",
+        "src/util/card_identity.cpp fsName(uint8_t type) switches on raw literals 12, 16, 32, 64 to name filesystem types, even though the SdFat library it depends on already defines named constants for the exact same values: FAT_TYPE_FAT12=12 and FAT_TYPE_FAT16=16 and FAT_TYPE_FAT32=32 (.pio/libdeps/cyd/SdFat/src/FatLib/FatPartition.h) and FAT_TYPE_EXFAT=64 (.pio/libdeps/cyd/SdFat/src/ExFatLib/ExFatPartition.h).",
+        "By contrast, src/hardware/sd_card.cpp's cardTypeName(uint8_t type, uint64_t capacityBytes) switches on SdFat's own named SD_CARD_TYPE_SD1/SD2/SDHC constants for the equivalent card-type classification -- showing the named-constant convention is already established in the same library boundary but was not applied to fsName().",
+        "src/util/card_format.cpp:60 contains the codebase's only static_cast (static_cast<unsigned long>(hz / 1000UL)); every other numeric/pointer conversion in the codebase uses a C-style cast instead, e.g. sd_card.cpp:235 (uint8_t*)heap_caps_malloc(...), touch_calibration.cpp:40/49 (int)mapRange(...), benchmark.cpp:67/141/210 (uint32_t)/(int) casts, benchmark_raw.cpp:15/32/96/113, display_results.cpp:256/274, bench_math.cpp:51, ui_geometry.cpp:27.",
+        "allocateDmaBuffer() (src/benchmark/benchmark_internal.h) is honestly typed as a nullable uint8_t* and every call site (benchmark.cpp, benchmark_raw.cpp via runQuickBenchmark/runSpiScalingBenchmark) checks the pointer before use, so the nullable contract is trustworthy in practice.",
+        "Raw uint8_t error/card-type/fs-type fields on CardInfo/AttemptResult mirror SdFat's own raw-integer APIs (sd.sdErrorCode(), sd.card()->type(), sd.fatType()) rather than an in-house enum being bypassed -- this is a boundary decision forced by the external library, not a self-inflicted enum bypass."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "Magic-number duplication of SdFat's own named FAT_TYPE_* constants in fsName(), plus an inconsistent, seemingly abandoned migration to static_cast (one lone occurrence versus universal C-style casts elsewhere), keep this from scoring higher."
+    }
+  },
+  "dimension_judgment": {
+    "type_safety": {
+      "dimension_character": "This is a small, disciplined embedded C++ codebase where enum classes are used consistently and exhaustively, and domain data is modeled with explicit typed structs rather than untyped bags -- a developer can trust the type declarations here. The defects are narrow and local: one function reinvents SdFat's own named FAT type constants as magic numbers where a sibling function in the same library boundary already does it correctly, and the codebase shows a single stray static_cast amid otherwise universal C-style casts, suggesting an incomplete or abandoned safety-cast migration.",
+      "score_rationale": "Per the type_safety anchors, this sits at '90 = generally accurate with a few soft spots that don't cause real confusion': the enum and struct discipline is systemic and reliable, so it clears the 80-anchor bar (recurring annotation/reality mismatches) easily, but the fsName() magic-number duplication and the singleton static_cast versus pervasive C-style casts are real, evidence-backed soft spots that stop it short of a 95+ exemplary score."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "type_safety",
+      "identifier": "fsname_magic_number_fs_types",
+      "summary": "fsName() uses raw literals 12/16/32/64 instead of SdFat's own named FAT_TYPE_* constants",
+      "related_files": [
+        "src/util/card_identity.cpp",
+        "src/hardware/sd_card.cpp"
+      ],
+      "evidence": [
+        "src/util/card_identity.cpp fsName(uint8_t type) switches on case 12/16/32/64 to classify FAT12/FAT16/FAT32/exFAT.",
+        "SdFat already defines FAT_TYPE_FAT12=12, FAT_TYPE_FAT16=16, FAT_TYPE_FAT32=32 (.pio/libdeps/cyd/SdFat/src/FatLib/FatPartition.h) and FAT_TYPE_EXFAT=64 (.pio/libdeps/cyd/SdFat/src/ExFatLib/ExFatPartition.h).",
+        "The sibling function cardTypeName() in src/hardware/sd_card.cpp already switches on SdFat's named SD_CARD_TYPE_SD1/SD2/SDHC constants for the analogous card-type classification, so the named-constant convention exists in the same file family but was not applied consistently to fsName()."
+      ],
+      "suggestion": "Replace the literal case values in fsName(uint8_t type) with SdFat's FAT_TYPE_FAT12, FAT_TYPE_FAT16, FAT_TYPE_FAT32, and FAT_TYPE_EXFAT so the switch documents itself and stays correct if the library's values ever change.",
+      "confidence": "medium",
+      "impact_scope": "local",
+      "fix_scope": "single_edit",
+      "root_cause_cluster": "magic_number_vs_named_library_constant"
+    },
+    {
+      "dimension": "type_safety",
+      "identifier": "stray_static_cast_amid_c_style_casts",
+      "summary": "One lone static_cast in card_format.cpp against otherwise universal C-style casts looks like an abandoned safety-cast migration",
+      "related_files": [
+        "src/util/card_format.cpp",
+        "src/hardware/sd_card.cpp",
+        "src/benchmark/benchmark_raw.cpp",
+        "src/benchmark/benchmark.cpp",
+        "src/util/touch_calibration.cpp"
+      ],
+      "evidence": [
+        "src/util/card_format.cpp:60 is the codebase's only static_cast: static_cast<unsigned long>(hz / 1000UL).",
+        "Every other numeric or pointer conversion in the codebase uses a C-style cast instead, e.g. sd_card.cpp:235 (uint8_t*)heap_caps_malloc(...), touch_calibration.cpp:40/49 (int)mapRange(...), benchmark.cpp:67/141/210, benchmark_raw.cpp:15/32/96/113, display_results.cpp:256/274, bench_math.cpp:51, ui_geometry.cpp:27."
+      ],
+      "suggestion": "Pick one cast convention and apply it uniformly: either convert the remaining C-style numeric/pointer casts to static_cast (or reinterpret_cast where a pointer's underlying type genuinely changes, e.g. the heap_caps_malloc void* casts), or revert the single static_cast in card_format.cpp to match the codebase's established C-style convention -- do not leave one file as the sole outlier.",
+      "confidence": "low",
+      "impact_scope": "codebase",
+      "fix_scope": "multi_file_refactor",
+      "root_cause_cluster": "half_migrated_cast_convention"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "Two isolated instances of not reusing an already-established, more precise pattern (named library constants; static_cast) that exists elsewhere in the same codebase -- consistent with incremental, file-by-file development without a cross-cutting style pass."
+    ],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "type_safety": {
+      "add": [
+        {
+          "header": "Enum classes used consistently and exhaustively",
+          "description": "AttemptStage, HomeAction, and BenchMenuAction are all enum class, and every consumer (main.cpp's switch over HomeAction, display_ui.cpp's uiHitTestHome/uiHitTestBenchMenu, card_identity.cpp's attemptStageName) handles them exhaustively without falling back to raw int/string comparisons.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Domain data modeled as typed structs, not dynamic bags",
+          "description": "CardInfo, AttemptResult, BenchmarkResult, and SpiScalePoint/SpiScaleResult in src/core/app_types.h are plain structs with explicit field types and default member initializers, so there is no dict[str, Any]-equivalent hiding the real shape of this data anywhere in the codebase.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Nullable buffer-allocation contract is honestly checked everywhere",
+          "description": "allocateDmaBuffer() returns a nullable uint8_t*, and every call site in benchmark.cpp and spi_scale_benchmark.cpp checks the result before use, so the nullable return type is trustworthy in practice rather than being an unchecked Optional.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Raw uint8_t error/type codes mirror the external SdFat API boundary",
+          "description": "CardInfo/AttemptResult expose raw uint8_t error and card/filesystem type codes because they come directly from SdFat's own raw-integer APIs (sd.sdErrorCode(), sd.card()->type(), sd.fatType()); this is a deliberate boundary decision forced by the external library, not a bypass of an in-house enum.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

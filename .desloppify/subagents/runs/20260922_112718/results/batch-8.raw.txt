@@ -1,0 +1,116 @@
+{
+  "batch": "low_level_elegance",
+  "batch_index": 8,
+  "assessments": {
+    "low_level_elegance": 79.0
+  },
+  "dimension_notes": {
+    "low_level_elegance": {
+      "evidence": [
+        "src/benchmark/benchmark.cpp: timedFileWrite (lines 30-102), timedFileRead (104-176), and verifyFile (178-241) are three near-identical ~70-line chunked-loop functions differing only in which SdFat call is made and whether CRC/live-throughput is tracked — the chunking, progress-threshold, and loop-termination logic is copy-pasted three times instead of factored into one shared loop.",
+        "src/ui/display_results.cpp: uiShowSpiScaleResult (183-368) is a single ~185-line function mixing five distinct concerns inline (max-speed scan, axis frame drawing, per-point coordinate math, line/point plotting, and summary-string construction) with no local helper extraction, while the sibling function in the same file, uiShowBenchmarkResult, delegates its repeated drawing work to a small drawHorizontalBar helper — extraction granularity is inconsistent between the two functions in the same file.",
+        "Statement-level formatting is split into two incompatible styles across the codebase: src/hardware/sd_card.cpp, src/benchmark/benchmark.cpp, src/benchmark/benchmark_raw.cpp, src/benchmark/spi_scale_benchmark.cpp, src/ui/display_ui.cpp, src/ui/display_progress.cpp, src/ui/display_diagnostics.cpp, src/ui/display_results.cpp, and src/main.cpp break nearly every statement and call argument onto its own line (e.g. `SdFs& sd =\\n    getSd();`, `a.stage =\\n    AttemptStage::InitFailed;`), while src/util/card_format.cpp, src/util/card_identity.cpp, src/util/touch_calibration.cpp, src/hardware/touch.cpp, src/ui/ui_geometry.cpp, src/benchmark/bench_math.cpp, and src/ui/display_ui_internal.cpp use conventional compact single-line statements for the same kind of code.",
+        "src/ui/display_diagnostics.cpp lines 65-73: a nested nested ternary picks the row color (`a.stage == Passed ? GREEN : (a.stage == NotTried ? DARKGREY : RED)`) inline inside a function call argument rather than being named.",
+        "By contrast, src/benchmark/bench_math.cpp, src/util/card_format.cpp, src/util/card_identity.cpp, src/util/touch_calibration.cpp, and src/ui/ui_geometry.cpp are small, pure, single-purpose functions with precise, minimal edge-case handling (e.g. computeBarFillWidth clamps to [0, barWidth-2] in three direct lines; formatSpiClock rounds MHz only when within 0.01 of an integer; mapTouchToScreen composes mapRange + clampInt without extra ceremony)."
+      ],
+      "impact_scope": "codebase",
+      "fix_scope": "multi_file_refactor",
+      "confidence": "medium"
+    }
+  },
+  "dimension_judgment": {
+    "low_level_elegance": {
+      "dimension_character": "This is a small, mostly disciplined codebase where the pure math/formatting/geometry helpers (bench_math, card_format, card_identity, touch_calibration, ui_geometry) are genuinely exemplary: precise, minimal, single-purpose, and easy to trust. But that quality is uneven — the benchmark and UI/hardware layers show real extraction imbalance (three copy-pasted chunked I/O loops in benchmark.cpp, one monolithic multi-concern function in display_results.cpp sitting next to a well-factored sibling), and roughly half the source files use a pervasively fragmented one-statement-per-line style that the other half does not, so a developer's experience of 'how readable is this function' shifts unpredictably file to file.",
+      "score_rationale": "The strong, precise pure-function modules would justify a 90+ on their own, but the duplicated benchmark loops and the split formatting convention (touching 9 of 17 .cpp files) create the kind of recurring friction the 80-anchor describes — a developer can't assume the internals of the next file they open will read like the last one. That keeps the score in the solid-but-uneven band rather than strong."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "low_level_elegance",
+      "identifier": "benchmark_duplicated_chunked_loops",
+      "summary": "timedFileWrite/timedFileRead/verifyFile in benchmark.cpp are three copy-pasted chunking loops",
+      "related_files": ["src/benchmark/benchmark.cpp"],
+      "evidence": [
+        "Lines 30-102 (timedFileWrite), 104-176 (timedFileRead), and 178-241 (verifyFile) each reimplement the same 'chunk against BENCH_BUFFER_SIZE, time the I/O call, accumulate ioMicros, report progress at BENCH_PROGRESS_STEP intervals' loop, differing only in the SdFat call (file.write/file.read/file.read+crc32Update) and whether a live MB/s figure is shown."
+      ],
+      "suggestion": "Extract one shared chunked-loop helper (e.g. runChunkedIo(FsFile&, buffer, totalSize, stageLabel, showLiveRate, perChunkFn) or a small lambda-driven loop) that the three call sites configure with the differing per-chunk operation, instead of maintaining three parallel copies of the same loop body.",
+      "confidence": "high",
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "root_cause_cluster": "duplicated_benchmark_io_loops"
+    },
+    {
+      "dimension": "low_level_elegance",
+      "identifier": "spi_scale_result_monolithic_render",
+      "summary": "uiShowSpiScaleResult mixes five drawing concerns in one ~185-line function with no local extraction",
+      "related_files": ["src/ui/display_results.cpp"],
+      "evidence": [
+        "Lines 183-368: max-speed scan (195-204), axis frame + labels (208-243), per-point coordinate math and line/point plotting (248-323), and summary-string construction (338-367) all live inline in one function.",
+        "The same file's uiShowBenchmarkResult (80-181) delegates its repeated bar-drawing work to a small drawHorizontalBar(...) helper, so the file already has an established, more granular extraction style that this function does not follow."
+      ],
+      "suggestion": "Split uiShowSpiScaleResult into small named steps consistent with the file's existing style, e.g. a maxSpeedOf(result) helper, a plotScalePoint(...) helper for the per-point coordinate + draw logic, and a buildScaleSummary(...) helper for the summary string — mirroring how drawHorizontalBar is already factored out.",
+      "confidence": "medium",
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "low_level_elegance",
+      "identifier": "split_statement_formatting_convention",
+      "summary": "Two incompatible statement-fragmentation styles coexist across the source tree",
+      "related_files": [
+        "src/hardware/sd_card.cpp",
+        "src/benchmark/benchmark.cpp",
+        "src/ui/display_results.cpp",
+        "src/util/card_format.cpp",
+        "src/ui/ui_geometry.cpp"
+      ],
+      "evidence": [
+        "src/hardware/sd_card.cpp and src/benchmark/benchmark.cpp break simple statements like `SdFs& sd = getSd();` or `a.stage = AttemptStage::InitFailed;` across 2-3 lines, one token/argument per line, even for trivial two-argument calls.",
+        "src/util/card_format.cpp, src/util/card_identity.cpp, src/ui/ui_geometry.cpp and src/benchmark/bench_math.cpp keep equivalent statements on single lines, so the same kind of code reads very differently depending on which file it lives in."
+      ],
+      "suggestion": "Adopt one clang-format style (line-length based wrapping, not per-token wrapping) and reflow the over-fragmented files to match the compact style already used in util/ and bench_math.cpp/ui_geometry.cpp — a single .clang-format run would resolve this without any logic change.",
+      "confidence": "medium",
+      "impact_scope": "codebase",
+      "fix_scope": "multi_file_refactor",
+      "root_cause_cluster": "inconsistent_statement_formatting"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "The util/ and bench_math/ui_geometry pure-logic modules appear to have been written (or later cleaned) independently from the benchmark/UI/hardware glue code, leaving two different authoring styles that never converged.",
+      "The benchmark chunked-loop duplication looks like the write-path was copied to create the read-path and then again for the verify-path, without factoring out the shared loop afterward."
+    ],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "low_level_elegance": {
+      "add": [
+        {
+          "header": "Pure math/formatting helpers are small and precise",
+          "description": "bench_math.cpp, card_format.cpp, card_identity.cpp, touch_calibration.cpp, and ui_geometry.cpp are consistently small, single-purpose, side-effect-free functions with exact edge-case handling (clamping, rounding thresholds) — this is the strongest corner of the codebase from a low-level-elegance perspective.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Staged SPI qualification loop uses direct guard-clause continues",
+          "description": "sd_card.cpp's scanCard() steps through SPI speeds with early `continue` on each failure stage (init/CID/CSD/read) rather than nested conditionals, keeping the happy path visible despite four sequential failure points.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Two incompatible statement-formatting styles coexist",
+          "description": "Roughly half the .cpp files (benchmark/, most of ui/, hardware/sd_card.cpp) fragment nearly every statement across multiple lines, while the other half (util/, bench_math.cpp, ui_geometry.cpp, touch.cpp, display_ui_internal.cpp) use conventional compact formatting for equivalent code, making local readability unpredictable across the tree.",
+          "settled": true,
+          "positive": false
+        },
+        {
+          "header": "Benchmark chunked I/O loops are triplicated",
+          "description": "timedFileWrite, timedFileRead, and verifyFile in benchmark.cpp reimplement the same chunking/timing/progress-reporting loop three times with only the inner I/O call differing.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

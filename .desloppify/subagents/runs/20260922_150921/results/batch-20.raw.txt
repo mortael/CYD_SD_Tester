@@ -1,0 +1,81 @@
+{
+  "batch": "type_safety",
+  "batch_index": 20,
+  "assessments": {
+    "type_safety": 91.5
+  },
+  "dimension_notes": {
+    "type_safety": {
+      "evidence": [
+        "AttemptStage (core/app_types.h) is a genuine enum class and every consumer (card_identity.cpp's attemptStageName switch, display_diagnostics.cpp's `a.stage == AttemptStage::Passed` comparisons, main.cpp's HomeAction/BenchMenuAction switches) compares/switches on the typed enum value, never on a raw int — no enum-bypass pattern found anywhere in src/",
+        "cardType and fsType in CardInfo are uint8_t rather than an enum class, but this is a deliberate, documented choice: SdFat exposes SD_CARD_TYPE_* and FAT_TYPE_* as plain library macros, not a C++ enum, and sd_card.h documents this reasoning inline ('Needs SD_CARD_TYPE_*/FAT_TYPE_* from SdFat, same reasoning as cardTypeName()') — cardTypeName()/fsName() switch over the macro values and both have a default case",
+        "A prior-round type_safety fix (fsName() raw literals 12/16/32/64 replaced with SdFat's FAT_TYPE_* constants) is confirmed still in place in src/hardware/sd_card.cpp lines 65-82",
+        "A prior-round fix (one stray static_cast in card_format.cpp) is confirmed resolved: grepping all of src/ for static_cast|reinterpret_cast|dynamic_cast returns zero matches — the codebase now uniformly uses C-style casts",
+        "Numeric format-string discipline is applied consistently: every uint32_t/uint64_t value passed to a %lu/%08lX printf specifier is explicitly cast to (unsigned long) first (sd_card.cpp, benchmark.cpp, benchmark_raw.cpp, display_results.cpp), rather than relying on an implicit/undefined-behavior-prone conversion",
+        "benchmark.cpp's ChunkIoFn callback type takes `void* context`; only chunkReadAndCrc uses it, casting it back to `uint32_t*` with an unchecked C-style cast, while chunkWrite/chunkRead both take and ignore the same untyped parameter — a small, self-contained type-erasure spot in an otherwise well-typed module",
+        "Output parameters (errorCode/errorData, screen coordinates, speed results) are passed as typed references (uint8_t&, int&, float&) rather than via void* or generic containers throughout hardware/, benchmark/, and ui/"
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "One narrow type-erasure spot remains (the void* context parameter on ChunkIoFn in benchmark.cpp, used only by chunkReadAndCrc) — a minor, low-confidence gap rather than something that undermines developer trust in type annotations across the codebase."
+    }
+  },
+  "dimension_judgment": {
+    "type_safety": {
+      "dimension_character": "This is a small, disciplined embedded C++ codebase where declared types are a reliable predictor of runtime behavior: the one real domain enum (AttemptStage) and the UI action enums are always switched/compared on their typed values, casts are uniform (no static_cast/reinterpret_cast anywhere), and numeric-to-printf conversions are explicitly and consistently cast rather than left implicit. The only soft spot is a single void*-context callback parameter in benchmark.cpp that erases type information for one of three callback implementations. Both type_safety issues flagged in the prior review round (raw FAT-type literals, a stray static_cast) are verifiably fixed and have not regressed.",
+      "score_rationale": "Per the global anchors, this sits at 'strong' (90) rather than 'exemplary' (100): a developer can trust type annotations here with only isolated friction, matching the void*-context spot and the (well-justified but still uint8_t-typed) SdFat card/fs type fields. There is no pattern of Optional-that-can't-be-None, missing annotations on public APIs, or enum bypass, so the score sits comfortably above the 80 'regular friction' band."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "type_safety",
+      "identifier": "void_star_context_callback",
+      "summary": "ChunkIoFn's void* context parameter erases type for the one implementation that actually uses it",
+      "related_files": ["src/benchmark/benchmark.cpp"],
+      "evidence": [
+        "using ChunkIoFn = int(*)(FsFile&, uint8_t*, size_t, void* context); chunkWrite and chunkRead both declare and ignore `void* /*context*/`, only chunkReadAndCrc uses it, via an unchecked C-style cast: `uint32_t* crc = (uint32_t*)context;`",
+        "runChunkedIo() is only ever called with either nullptr or a single &actualCrc uint32_t*, so the generic void* buys no real polymorphism beyond this one call site"
+      ],
+      "suggestion": "Replace the generic `void* context` parameter with a concrete `uint32_t* crcAccum` (nullable) threaded through runChunkedIo() and ChunkIoFn, since that is the only value ever passed; this removes the unchecked cast in chunkReadAndCrc and the two ignored-parameter comments in chunkWrite/chunkRead without adding any abstraction.",
+      "confidence": "low",
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": ["void_star_context_callback"],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "type_safety": {
+      "add": [
+        {
+          "header": "Enum classes are never bypassed with raw literals",
+          "description": "AttemptStage, HomeAction, and BenchMenuAction are all enum class types and every comparison/switch site in card_identity.cpp, display_diagnostics.cpp, display_ui.cpp, and main.cpp uses the typed enumerator, never an underlying int — confirmed by exhaustive grep across src/ with no bare-int comparisons against these fields.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "SdFat macro constants intentionally kept as uint8_t, not wrapped",
+          "description": "CardInfo.cardType and .fsType stay uint8_t because SdFat's SD_CARD_TYPE_*/FAT_TYPE_* are plain library-defined macros, not a C++ enum the project owns; sd_card.h documents this rationale inline and cardTypeName()/fsName() both switch on the macro values with a default case, so the classification is centralized despite the loose storage type.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Explicit casts before printf integer format specifiers",
+          "description": "Every uint32_t/uint64_t value passed to a %lu/%08lX-style specifier is explicitly cast to (unsigned long) at the call site (sd_card.cpp, benchmark.cpp, benchmark_raw.cpp, display_results.cpp) instead of relying on an implicit conversion, which keeps the printf calls portable and warning-free.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Cast convention fully unified to C-style casts",
+          "description": "A prior review round found one stray static_cast in card_format.cpp against an otherwise all-C-style-cast codebase; a full grep of src/ for static_cast|reinterpret_cast|dynamic_cast now returns zero matches, confirming the cleanup held and the convention is uniform.",
+          "settled": true,
+          "positive": true
+        }
+      ]
+    }
+  }
+}

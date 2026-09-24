@@ -1,0 +1,100 @@
+{
+  "batch": "api_surface_coherence",
+  "batch_index": 11,
+  "assessments": {
+    "api_surface_coherence": 87.0
+  },
+  "dimension_notes": {
+    "api_surface_coherence": {
+      "evidence": [
+        "scanCard() (src/hardware/sd_card.h:8) returns only bool; per-attempt SPI qualification data lives in separate global accessors getAttempts()/getAttemptCount() (sd_card.h:13-14), while the structurally identical per-point SPI data in runSpiScalingBenchmark() (src/benchmark/benchmark.h:5) is returned directly as a self-contained SpiScaleResult{points[], count} (src/core/app_types.h:77-80).",
+        "diagnostics.cpp bridges this gap by manually re-assembling a pointer+count pair: uiShowDiagnostics(getCardInfo(), getAttempts(), getAttemptCount()) (src/ui/diagnostics.cpp:5-10), whereas the sibling result screen just takes one struct: uiShowSpiScaleResult(const SpiScaleResult&) (src/ui/display_ui.h:51-53) -- two API shapes for the same 'array of per-attempt results' concept.",
+        "ui_geometry.h's hitTestRect(rectX, rectY, rectW, rectH, pointX, pointY) (src/ui/ui_geometry.h:6-13) is the only public function in the codebase with 6 primitive parameters instead of a Rect/Point grouping; every other public function stays at <=5.",
+        "Elsewhere the API surface is genuinely consistent: fallible primitive operations uniformly signal failure via bool return + trailing out-param(s) (rawReadAtCurrentSpeed in benchmark_internal.h:15-19, readTouch in touch.h:4), and pure formatters/mappers uniformly order value-in before buffer/out-refs (formatHumanBytes, formatSpiClock in card_format.h:8-9, mapTouchToScreen in touch_calibration.h:11-16).",
+        "No mixed sync/async surface exists (single-threaded embedded loop throughout), and no public function documents failure modes beyond its bool/pointer return convention, but that convention is applied predictably so it does not read as a missing contract in practice."
+      ],
+      "impact_scope": "subsystem",
+      "fix_scope": "multi_file_refactor",
+      "confidence": "medium",
+      "issues_preventing_higher_score": "The sd_card module's split (bool + global getters) result-retrieval shape versus the benchmark module's self-contained result-struct shape for equivalent 'array of per-attempt SPI results' data is a real, still-unaddressed inconsistency that forces callers (diagnostics.cpp) to manually reassemble what the other module hands back as one value; a minor hitTestRect() 6-parameter outlier is also present."
+    }
+  },
+  "dimension_judgment": {
+    "api_surface_coherence": {
+      "dimension_character": "For a 31-file, ~3100 LOC embedded project the API surface is unusually disciplined: fallible operations consistently return bool with trailing out-refs, pure formatters consistently order value-then-buffer, and UI draw functions consistently take const-ref result structs. The one systemic wrinkle is that the SD-card subsystem exposes its per-attempt array through a bool-returning function plus two separate global getters, while the benchmark subsystem's structurally identical data is returned as one self-describing struct -- a real shape mismatch a developer has to learn as a special case rather than infer from the rest of the API.",
+      "score_rationale": "This sits closer to the 90 anchor ('mostly coherent with minor inconsistency') than the 80 anchor ('recurring irregularities'), because the mismatch is confined to one well-understood pair of modules rather than spread across many endpoints, and the rest of the surface (hardware/, util/, ui/, benchmark/) is consistent enough that a developer can predict shape from one example almost everywhere else. The still-open scanCard/getAttempts vs SpiScaleResult divergence, plus the isolated 6-parameter hitTestRect(), keep it from reaching the 90+ range."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "api_surface_coherence",
+      "identifier": "sd_card_attempts_shape_mismatch",
+      "summary": "scanCard()/getAttempts() expose per-attempt SPI data via bool+global-getters while runSpiScalingBenchmark() returns a self-contained struct for the same kind of data",
+      "related_files": [
+        "src/hardware/sd_card.h",
+        "src/hardware/sd_card.cpp",
+        "src/benchmark/benchmark.h",
+        "src/benchmark/spi_scale_benchmark.cpp",
+        "src/core/app_types.h",
+        "src/ui/diagnostics.cpp"
+      ],
+      "evidence": [
+        "sd_card.h declares `bool scanCard();`, `const AttemptResult* getAttempts();`, `size_t getAttemptCount();` as three separate entry points for one logical result.",
+        "app_types.h already defines SpiScaleResult{ SpiScalePoint points[N]; size_t count; } and benchmark.h returns it directly from runSpiScalingBenchmark() -- the same shape scanCard's data could use but doesn't.",
+        "diagnostics.cpp has to call three separate functions (getCardInfo(), getAttempts(), getAttemptCount()) to assemble what uiShowSpiScaleResult() receives as a single argument."
+      ],
+      "suggestion": "Add an AttemptResult array + count into CardInfo (or a parallel ScanResult struct mirroring SpiScaleResult) and have scanCard() populate/return it, then delete getAttempts()/getAttemptCount() and update diagnostics.cpp to pass the one struct through, matching the pattern already established by SpiScaleResult.",
+      "confidence": "medium",
+      "impact_scope": "subsystem",
+      "fix_scope": "multi_file_refactor",
+      "root_cause_cluster": "sd_card_global_state_vs_result_struct"
+    },
+    {
+      "dimension": "api_surface_coherence",
+      "identifier": "hittestrect_param_count",
+      "summary": "hitTestRect() takes 6 unstructured int parameters, the only public function in the codebase past the 5-parameter mark",
+      "related_files": [
+        "src/ui/ui_geometry.h",
+        "src/ui/ui_geometry.cpp"
+      ],
+      "evidence": [
+        "bool hitTestRect(int rectX, int rectY, int rectW, int rectH, int pointX, int pointY) in ui_geometry.h:6-13 has 6 primitive parameters with no grouping, while every other public function in the codebase has 5 or fewer."
+      ],
+      "suggestion": "If a second call site ever appears, group the four rect parameters into a small Rect{x,y,w,h} value type (real semantic grouping, not a generic options bag) so the signature drops to hitTestRect(Rect, pointX, pointY); with only one current call site (display_ui.cpp) this is optional polish, not urgent.",
+      "confidence": "low",
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "sd_card.h/.cpp predates the later benchmark modules' convention of returning one self-contained result struct, so it never got migrated to the same shape when SpiScaleResult/BenchmarkResult were introduced."
+    ],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "api_surface_coherence": {
+      "add": [
+        {
+          "header": "Consistent bool+out-ref convention for fallible primitives",
+          "description": "rawReadAtCurrentSpeed, readTouch, and scanCard's internal per-speed loop all signal failure via a bool return with results written to trailing reference/pointer out-params, and allocateDmaBuffer signals failure via nullptr -- a predictable, uniformly-applied shape across hardware/, util/, and benchmark/.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Uniform value-then-buffer ordering in formatters",
+          "description": "formatHumanBytes, formatSpiClock, and mapTouchToScreen all place the value(s)-in first and the output buffer/refs last, so a developer who has seen one formatting or mapping function can predict the parameter order of the others.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "sd_card module retains global-getter shape while benchmark module moved to result structs",
+          "description": "scanCard() still exposes per-attempt results via getAttempts()/getAttemptCount() globals, the one place in the API surface that doesn't follow the self-contained-result-struct pattern used by runQuickBenchmark/runSpiScalingBenchmark; root cause of the still-open scanCard vs runSpiScalingBenchmark shape-mismatch issue.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

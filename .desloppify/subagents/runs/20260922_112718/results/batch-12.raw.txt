@@ -1,0 +1,44 @@
+{
+  "batch": "authorization_consistency",
+  "batch_index": 12,
+  "assessments": {"authorization_consistency": 100.0},
+  "dimension_notes": {
+    "authorization_consistency": {
+      "evidence": [
+        "src/ (31 files, 3142 LOC) contains no route handlers, network servers, RPC endpoints, or any request-dispatch surface that would need per-endpoint auth checks — the codebase is single-user ESP32 firmware driving a local TFT touchscreen and SD card.",
+        "A repo-wide case-insensitive search for auth/permission/credential/token/login/admin/role/acl/secret/apikey across src/ turns up exactly one hit: a comment in src/util/card_identity.cpp ('Vendor hint only; not an authenticity guarantee.') describing an SD-card counterfeit-detection heuristic, unrelated to user authorization.",
+        "The 'holistic_context.authorization' field in the blind packet is empty ({}), consistent with there being no auth-related signals for mechanical detectors to surface.",
+        "UI navigation (src/ui/display_ui.h, src/ui/diagnostics.h) exposes actions (HomeAction, BenchMenuAction) gated only by touchscreen hit-testing, not by any privilege model — appropriate since the only 'user' is whoever is physically holding the device.",
+        "There are no service-role bypasses, no permission-string literals, and no RLS-equivalent concept anywhere in the codebase to be inconsistent about."
+      ],
+      "impact_scope": "codebase",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "None found; the dimension is not applicable to this codebase. This is single-user embedded firmware with no network-exposed surface, no multi-user concept, and no route/RLS/permission constructs — there is nothing for an authorization scheme to apply to, and inventing one (e.g. a PIN screen or role check) would add complexity without a real threat model to justify it. Scored 100 to reflect that the codebase does not need this infrastructure and exhibits none of the inconsistency patterns the rubric looks for."
+    }
+  },
+  "dimension_judgment": {
+    "authorization_consistency": {
+      "dimension_character": "Authorization consistency, as a concept, does not exist in this codebase because there is nothing that requires it: the firmware runs on a single physical device with one implicit user (whoever holds it), no network listeners, no accounts, and no privileged operations distinct from unprivileged ones. Every action reachable from the touchscreen UI (rescan, benchmark, diagnostics) is equally available to that one user, which is the correct and only sensible model here.",
+      "score_rationale": "Per global anchors, 100 represents 'no material issues' for the dimension in question; here there is no auth surface at all, so there can be no missing decorators, inconsistent permission strings, or mixed trust boundaries — the failure modes the rubric targets simply have no place to occur. This differs from a codebase that has auth infrastructure applied unevenly (which would score in the 60-80 range); this one correctly has none, so it is scored at the top of the scale rather than penalized for an absence that is architecturally appropriate."
+    }
+  },
+  "issues": [],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "authorization_consistency": {
+      "add": [
+        {
+          "header": "No authorization surface exists or is needed",
+          "description": "CYD SD Tester is single-user ESP32 firmware controlling a local touchscreen and SD card slot; it has no network listeners, accounts, routes, or privilege tiers. A repo-wide scan for auth/permission/credential/role/admin terms found only an unrelated comment about SD-card vendor-ID heuristics. The dimension's look_for patterns (auth decorators on some routes, RLS gaps, permission-string literals, admin bypass) have no applicable surface in this codebase, so this is correctly scored high rather than penalized for lacking infrastructure it has no reason to have.",
+          "settled": true,
+          "positive": true
+        }
+      ]
+    }
+  }
+}

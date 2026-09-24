@@ -1,0 +1,256 @@
+{
+  "assessments": {
+    "convention_outlier": 97.0,
+    "error_consistency": 78.0
+  },
+  "dimension_notes": {
+    "convention_outlier": {
+      "evidence": [
+        "src/hardware/sd_card.cpp: cardTypeName(), fsName(), makeSdConfig(), recordSdError(), allocateDmaBuffer() are all now defined one-arg-per-line, matching their sd_card.h declarations and the rest of the file.",
+        "src/hardware/card_identity.cpp: attemptStageName(), resolveVendor(), identityCheckName() are all one-arg-per-line, matching card_identity.h.",
+        "src/hardware/touch.cpp, touch.h, touch_calibration.cpp, touch_calibration.h all use the same one-arg-per-line signature style and static (not anonymous-namespace) internal linkage (mapRange, clampInt, touchTransfer, touchRead12 are all static).",
+        "src/ui/display_ui.cpp, display_ui_internal.cpp, display_diagnostics.cpp, display_progress.cpp, display_results.cpp, ui_geometry.cpp/.h and src/benchmark/*.cpp/.h all follow the identical one-arg-per-line convention for every function taking 2+ parameters, and single-line signatures only for 0-1 parameter functions (e.g. initDisplay(), uiWaitForTap(), getSd()) -- consistent codebase-wide, not just in the previously-flagged files.",
+        "No anonymous namespaces remain anywhere in src/ (grep for 'namespace' across src/ returns nothing) -- touch_calibration.cpp's prior anonymous-namespace usage is confirmed converted to static.",
+        "Only one struct-with-methods-like data holder exists (Button in display_ui.cpp) and it is a plain POD manipulated by free functions (hit(), drawButton()), matching the struct+free-function pattern used for CardInfo, ScaleGraph, ScalePointXY, BenchmarkResult, etc. -- no class-based OOP style competes with it.",
+        "Headers consistently carry rationale comments directly above declarations explaining non-obvious contracts (e.g. sd_card.h's scanCard() comment contrasting it with runSpiScalingBenchmark(), benchmark_internal.h explaining why rawReadAtCurrentSpeed() lives there instead of hardware/).",
+        "All 6 test suites (test_app_types, test_bench_math, test_card_format, test_card_identity, test_touch_calibration, test_ui_geometry) follow the identical one-directory-per-Unity-target layout with no structural outliers."
+      ],
+      "impact_scope": "codebase",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "No defects found; the only reason this isn't a full 100 is that a couple of trivial single-line early-return guard clauses (clampInt in touch_calibration.cpp, the fillW clamps in computeBarFillWidth in ui_geometry.cpp) are a micro-variance from the codebase's usual braced multi-line style, and the codebase is small (29 files) which bounds how strongly 'zero drift anywhere' can be asserted."
+    },
+    "error_consistency": {
+      "evidence": [
+        "src/hardware/sd_card.cpp's recordSdError() is the single, consistently-formatted helper for capturing SD/SPI hardware failures (Serial.printf '%s FAIL %02X/%02X'), and it is now used across scanCard() (init/CID/CSD/read/volume), runQuickBenchmark()'s chunked I/O and sd.open() failure, runQuickBenchmark()'s raw-read failure (newly added), and runSpiScalingBenchmark()'s init/read/bench failures.",
+        "runQuickBenchmark() (src/benchmark/benchmark.cpp) calls recordSdError() for chunk-transfer failure, sd.open() failure, and raw-read failure, but has no recordSdError() call when file.preAllocate() fails or when any of its three file.seekSet(0) calls fail (lines ~417-474) -- an inconsistency inside the very function most recently edited to close this class of gap.",
+        "benchmark_raw.cpp's rawReadAtCurrentSpeed() calls recordSdError() internally with a precise 'RAW READ LBA %lu' label but writes the result into local uint8_t errorCode/errorData variables that are discarded when the function returns false (its signature has no error out-params, unlike sibling helpers timedFileWrite/timedFileRead/verifyFile which all take uint8_t& errorCode, uint8_t& errorData).",
+        "Both callers of rawReadAtCurrentSpeed() (benchmark.cpp's runQuickBenchmark() and spi_scale_benchmark.cpp's runSpiScalingBenchmark()) re-call recordSdError() themselves immediately after a false return, using a coarser generic label ('RAW READ' / 'BENCH') and relying on the SD object's error state being unchanged since the internal call -- a redundant, context-losing double-capture.",
+        "SpiScalePoint.errorCode/errorData (src/core/app_types.h) are populated via recordSdError() in spi_scale_benchmark.cpp, but display_results.cpp's uiShowSpiScaleResult()/scalePointCoords()/drawScalePoint() never reference either field -- a failed point is shown only as unplotted on the graph, unlike AttemptResult's structurally identical errorCode/errorData, which display_diagnostics.cpp does surface as an on-screen '%s %02X/%02X' line.",
+        "CardInfo is fully reset ('info = {};') at the top of scanCard(), and BenchmarkResult/SpiScaleResult are fresh locals per call, so no stale error codes carry over between runs -- failure state is predictable run-to-run even where it isn't fully surfaced."
+      ],
+      "impact_scope": "subsystem",
+      "fix_scope": "multi_file_refactor",
+      "confidence": "high",
+      "issues_preventing_higher_score": ""
+    }
+  },
+  "dimension_judgment": {
+    "convention_outlier": {
+      "dimension_character": "Convention consistency is now a genuine strength rather than a recurring drag: every previously-flagged formatting outlier (the compact single-line definitions in sd_card.cpp/card_identity.cpp, the sd_card.*/card_format.*/card_identity.* holdouts, identityCheckName()/header(), and touch.h/touch.cpp) has been reformatted to match the dominant one-arg-per-line style, and touch_calibration.cpp's lone anonymous namespace was converted to static. A developer moving between hardware/, benchmark/, and ui/ today encounters the same signature formatting, the same static-linkage-for-private-helpers pattern, and the same struct+free-function data modeling everywhere.",
+      "score_rationale": "Per the global anchors, 90 implies only minor isolated friction and 100 implies no material issues at all; after inspecting every header/definition pair flagged in prior review rounds plus the remaining files in src/ and test/, I found no residual convention drift, so this sits near the top of the scale. I stop just short of 100 because the codebase is small enough (29 files, ~3.5k LOC) that a claim of total uniformity carries some sampling uncertainty, and a couple of trivial single-line guard clauses are a cosmetic (not functional) departure from the file's own multi-line style."
+    },
+    "error_consistency": {
+      "dimension_character": "Error handling here centers on one well-adopted helper, recordSdError(), used consistently for capturing SD/SPI hardware failures across scanCard(), the quick benchmark, the SPI scaling sweep, and raw sector reads, with clean per-run state resets that avoid stale error carryover between scans. But the ongoing push to close remaining gaps has left the migration half-finished: runQuickBenchmark() still skips error capture on preAllocate()/seekSet() failures in the same function that captures it everywhere else, rawReadAtCurrentSpeed() computes a precise per-LBA error internally only to discard it and force two separate callers to reconstruct a coarser version, and SpiScalePoint's error fields are written but never read by any consumer.",
+      "score_rationale": "This lands in the 'solid but uneven' band: the dominant pattern (recordSdError() as the one error-capture path) is real and mostly followed, so a developer can generally predict how SD failures get recorded, but the exceptions are concentrated in exactly the files most recently touched for this concern across several fix rounds, so the inconsistency is narrow but still not fully resolved. That keeps the score below the 80s ceiling rather than dropping into the 60s, since the remaining gaps are a handful of untraced branches and one dead-store field rather than a systemic mixed-strategy problem across the codebase."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "error_consistency",
+      "identifier": "benchmark_prealloc_seekset_no_error_capture",
+      "summary": "runQuickBenchmark() captures no SD error code on preAllocate()/seekSet() failure, unlike every other I/O failure branch in the same function",
+      "confidence": "high",
+      "suggestion": "Call recordSdError(sd, result.ioErrorCode, result.ioErrorData, \"PREALLOC\") when preAllocate() fails, and a similar call (e.g. \"SEEK\") when any of the three file.seekSet(0) calls fail, mirroring the existing pattern used for every other failure branch in runQuickBenchmark().",
+      "related_files": [
+        "src/benchmark/benchmark.cpp"
+      ],
+      "evidence": [
+        "file.preAllocate(BENCH_TEST_SIZE) failure only prints a local Serial.printf PASS/FAIL line and sets result.preallocOk=false -- no recordSdError() call.",
+        "The three 'if (... && file.seekSet(0))' guards silently fall through to leaving fileWriteOk/fileReadOk/verifyOk false with no error capture, while every other failure branch in this same function (chunk transfer, sd.open(), raw read) does call recordSdError() to populate result.ioErrorCode/ioErrorData."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "error_consistency",
+      "identifier": "raw_read_error_discarded_then_reconstructed",
+      "summary": "rawReadAtCurrentSpeed() computes a precise per-LBA SD error internally but discards it, forcing both callers to redundantly re-derive a coarser version",
+      "confidence": "medium",
+      "suggestion": "Add 'uint8_t& errorCode, uint8_t& errorData' out-parameters to rawReadAtCurrentSpeed() (matching timedFileWrite/timedFileRead/verifyFile's convention) and have it write into them directly instead of local throwaway variables; remove the now-redundant recordSdError() calls in runQuickBenchmark() and runSpiScalingBenchmark().",
+      "related_files": [
+        "src/benchmark/benchmark_raw.cpp",
+        "src/benchmark/benchmark.cpp",
+        "src/benchmark/spi_scale_benchmark.cpp"
+      ],
+      "evidence": [
+        "benchmark_raw.cpp: recordSdError() is called into local 'uint8_t errorCode; uint8_t errorData;' that are immediately discarded when the function returns false -- rawReadAtCurrentSpeed()'s signature (benchmark_internal.h) has no error out-params, unlike sibling chunked-I/O helpers timedFileWrite/timedFileRead/verifyFile which all take 'uint8_t& errorCode, uint8_t& errorData'.",
+        "benchmark.cpp's runQuickBenchmark() and spi_scale_benchmark.cpp's runSpiScalingBenchmark() both re-call recordSdError() themselves right after rawReadAtCurrentSpeed() returns false, relying on sd's error state being unchanged since the internal call, and using a generic 'RAW READ'/'BENCH' label instead of the internal call's precise 'RAW READ LBA %lu' label -- so the more useful diagnostic (which sector failed) never reaches the persisted result, only a transient Serial line."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor"
+    },
+    {
+      "dimension": "error_consistency",
+      "identifier": "spiscale_error_fields_never_read",
+      "summary": "SpiScalePoint.errorCode/errorData are populated by recordSdError() but never read back anywhere, unlike AttemptResult's identical fields",
+      "confidence": "medium",
+      "suggestion": "Either show point.errorCode/errorData next to failed points in uiShowSpiScaleResult() (e.g. folded into the text built by buildScaleSummary()), or drop the fields if the scaling screen intentionally only conveys pass/fail visually -- as written, the fields are dead weight that looks like an oversight next to AttemptResult's equivalent treatment.",
+      "related_files": [
+        "src/benchmark/spi_scale_benchmark.cpp",
+        "src/core/app_types.h",
+        "src/ui/display_results.cpp"
+      ],
+      "evidence": [
+        "spi_scale_benchmark.cpp writes point.errorCode/point.errorData via recordSdError() on INIT/READ/BENCH failure.",
+        "uiShowSpiScaleResult() and its helpers scalePointCoords()/drawScalePoint() in display_results.cpp never reference point.errorCode or point.errorData -- a failed point is only shown as unplotted on the graph.",
+        "AttemptResult.errorCode/errorData, the structurally identical field on the per-speed qualification result, IS surfaced -- uiShowDiagnostics() (display_diagnostics.cpp) renders it as an on-screen '%s %02X/%02X' line."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit"
+    }
+  ],
+  "review_quality": {
+    "batch_count": 2,
+    "dimension_coverage": 0.05,
+    "evidence_density": 5.0,
+    "high_score_missing_issue_note": 0
+  },
+  "context_updates": {
+    "convention_outlier": {
+      "add": [
+        {
+          "header": "One-arg-per-line convention now applied uniformly",
+          "description": "Every multi-parameter function signature and definition across src/ (hardware/, benchmark/, ui/, core/) uses one-argument-per-line formatting; 0-1 parameter functions stay single-line. This was previously inconsistent (sd_card.*, card_format.*, card_identity.*, touch.*) but all flagged files are now reformatted to match.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Static linkage used uniformly for private helpers",
+          "description": "All internal/private helper functions across src/*.cpp use `static`; no file uses an anonymous namespace instead (touch_calibration.cpp's prior anonymous-namespace usage was converted). This removes what was previously the only style island in the codebase.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Struct+free-function pattern used consistently for domain data",
+          "description": "Domain data (CardInfo, BenchmarkResult, ScaleGraph, ScalePointXY, the local Button in display_ui.cpp) is always a plain struct manipulated by free functions, never a class with methods -- one consistent data-modeling idiom across hardware/, benchmark/, ui/, and core/.",
+          "settled": true,
+          "positive": true
+        }
+      ],
+      "remove": [
+        "cardTypeName/fsName/attemptStageName/resolveVendor are still defined single-line despite their own wrapped headers and the codebase-wide one-arg-per-line convention",
+        "sd_card.*, card_format.*, and card_identity.* keep compact single-line signatures, unlike the rest of src/",
+        "identityCheckName() and header() are defined with wrapped signatures that contradict their own single-line header declarations and (for identityCheckName) their file-siblings",
+        "hardware/touch.h and touch.cpp use compact single-line formatting while the rest of src/ wraps one argument per line",
+        "touch_calibration.cpp is the only file using an anonymous namespace for private helpers instead of `static`"
+      ]
+    },
+    "error_consistency": {
+      "add": [
+        {
+          "header": "recordSdError() is the single SD error-capture path",
+          "description": "scanCard(), runQuickBenchmark(), runSpiScalingBenchmark(), and rawReadAtCurrentSpeed() all funnel hardware SD/SPI failures through the one recordSdError() helper in sd_card.cpp, giving a uniform '%02X/%02X' error format instead of ad hoc per-file logging.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Per-run result structs reset cleanly, no stale errors",
+          "description": "CardInfo is reassigned to '{}' at the top of scanCard(), and BenchmarkResult/SpiScaleResult are fresh locals per call, so a failure code from a prior run can never leak into a later report.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "SD error-field migration is incremental and still uneven",
+          "description": "Each review round has closed one specific missing-recordSdError() gap (raw read, mount error) without auditing sibling branches in the same function or struct family, so new gaps of the same shape (preAllocate/seekSet failures, rawReadAtCurrentSpeed's discarded internal capture, SpiScalePoint's unread fields) keep appearing one at a time rather than the pattern being finished in one pass.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  },
+  "review_scope": {
+    "reviewed_files_count": 0,
+    "successful_batch_count": 2,
+    "full_sweep_included": false,
+    "total_files": 29,
+    "imported_dimensions": [
+      "convention_outlier",
+      "error_consistency"
+    ]
+  },
+  "provenance": {
+    "kind": "blind_review_batch_import",
+    "blind": true,
+    "runner": "dry-run",
+    "run_stamp": "20260922_200234",
+    "created_at": "2026-09-22T20:11:42+00:00",
+    "batch_count": 2,
+    "batch_indexes": [
+      3,
+      4
+    ],
+    "packet_path": "D:\\dev\\CYD_SD_Tester\\.desloppify\\review_packet_blind.json",
+    "packet_sha256": "194e39508d707764d88fde071c631a1a6e3164e066e3d9664bc92672574f4268"
+  },
+  "assessment_coverage": {
+    "scored_dimensions": [
+      "naming_quality",
+      "logic_clarity",
+      "type_safety",
+      "contract_coherence",
+      "error_consistency",
+      "abstraction_fitness",
+      "ai_generated_debt",
+      "high_level_elegance",
+      "mid_level_elegance",
+      "low_level_elegance",
+      "cross_module_architecture",
+      "initialization_coupling",
+      "convention_outlier",
+      "dependency_health",
+      "test_strategy",
+      "api_surface_coherence",
+      "authorization_consistency",
+      "incomplete_migration",
+      "package_organization",
+      "design_coherence"
+    ],
+    "selected_dimensions": [
+      "naming_quality",
+      "logic_clarity",
+      "type_safety",
+      "contract_coherence",
+      "error_consistency",
+      "abstraction_fitness",
+      "ai_generated_debt",
+      "high_level_elegance",
+      "mid_level_elegance",
+      "low_level_elegance",
+      "cross_module_architecture",
+      "initialization_coupling",
+      "convention_outlier",
+      "dependency_health",
+      "test_strategy",
+      "api_surface_coherence",
+      "authorization_consistency",
+      "incomplete_migration",
+      "package_organization",
+      "design_coherence"
+    ],
+    "imported_dimensions": [
+      "convention_outlier",
+      "error_consistency"
+    ],
+    "missing_dimensions": [
+      "naming_quality",
+      "logic_clarity",
+      "type_safety",
+      "contract_coherence",
+      "abstraction_fitness",
+      "ai_generated_debt",
+      "high_level_elegance",
+      "mid_level_elegance",
+      "low_level_elegance",
+      "cross_module_architecture",
+      "initialization_coupling",
+      "dependency_health",
+      "test_strategy",
+      "api_surface_coherence",
+      "authorization_consistency",
+      "incomplete_migration",
+      "package_organization",
+      "design_coherence"
+    ]
+  }
+}

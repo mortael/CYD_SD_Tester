@@ -1,0 +1,108 @@
+{
+  "batch": "convention_outlier",
+  "batch_index": 3,
+  "assessments": {
+    "convention_outlier": 88.0
+  },
+  "dimension_notes": {
+    "convention_outlier": {
+      "evidence": [
+        "Function naming (camelCase: scanCard, getCardInfo, uiDrawHome, formatHumanBytes, mapTouchToScreen), type naming (PascalCase: CardInfo, AttemptResult, BenchmarkResult, SpiScalePoint, HomeAction), and constant naming (SCREAMING_SNAKE_CASE: SD_CS, BENCH_TEST_SIZE, TFT_BACKLIGHT) are applied uniformly across all 31 files with no drift.",
+        "src/hardware/touch.h and touch.cpp keep every declaration and call on a single line (e.g. `bool readTouch(int& sx, int& sy);`, `digitalWrite(TOUCH_MOSI, (out >> bit) & 1);`), while the dominant style used elsewhere (bench_math.*, ui_geometry.*, touch_calibration.cpp, display_ui.*, display_ui_internal.*, benchmark_internal.h, sd_card.cpp bodies, main.cpp) wraps almost every multi-argument call and declaration to one argument per line.",
+        "src/util/touch_calibration.cpp is the only .cpp file that wraps private helpers (mapRange, clampInt) in an anonymous `namespace { ... }` block; every other file with file-local helpers uses `static` instead (sd_card.cpp: clearAttempts/fillCardIdentity/runConsistencyChecks/printCardIdentity; benchmark.cpp: removeTestFile/timedFileWrite/timedFileRead/verifyFile; display_ui.cpp: hit/drawButton; display_results.cpp: drawHorizontalBar; main.cpp: rescan/waitForBenchMenuAction/runBenchMenu).",
+        "Header/source organization is otherwise consistent: matching *.h/*.cpp pairs per concept, a shared *_internal.h idiom for non-public internals (benchmark_internal.h, display_ui_internal.h) used the same way in two different directories, and a uniform 'no hardware/Arduino dependency, safe to unit-test' comment convention on all five pure-logic headers (bench_math.h, ui_geometry.h, card_format.h, card_identity.h, touch_calibration.h)."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "confidence": "medium",
+      "issues_preventing_higher_score": "touch.cpp/touch.h break from the dominant vertical one-argument-per-line formatting convention used across the rest of src/, and touch_calibration.cpp uses an anonymous namespace where seven other files with file-local helpers use `static`."
+    }
+  },
+  "dimension_judgment": {
+    "convention_outlier": {
+      "dimension_character": "Naming, struct-based domain typing, header/source pairing, and internal-header conventions (*_internal.h) are applied with near-total consistency across all five subsystem directories, giving a developer a reliable set of patterns to lean on. The only real friction is two small, isolated files that quietly diverge from otherwise codebase-wide conventions: hardware/touch.* uses compact single-line formatting against the dominant vertical one-argument-per-line style, and util/touch_calibration.cpp uses an anonymous namespace where every sibling uses `static`.",
+      "score_rationale": "This lands near the 90 anchor ('mostly consistent with minor style islands that don't cause real confusion') rather than 80 ('recurring friction across major areas') because both deviations are confined to a single file pair each in a 31-file codebase and don't affect behavior or navigation. It stays a few points below 95-100 because a developer editing hardware/touch.* or util/touch_calibration.cpp does hit a genuine 'why is this different' moment relative to every other file they've seen."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "convention_outlier",
+      "identifier": "touch_module_formatting_island",
+      "summary": "hardware/touch.h and touch.cpp use compact single-line formatting while the rest of src/ wraps one argument per line",
+      "related_files": [
+        "src/hardware/touch.h",
+        "src/hardware/touch.cpp"
+      ],
+      "evidence": [
+        "touch.h declares `bool readTouch(int& sx, int& sy);` on one line, while sibling headers wrap even single-parameter declarations vertically, e.g. display_ui.h's `void uiDrawHome(\\n    const CardInfo& info\\n);` and touch_calibration.h's four-parameter `mapTouchToScreen(...)`.",
+        "touch.cpp keeps multi-argument calls on one line throughout (`digitalWrite(TOUCH_MOSI, (out >> bit) & 1);`, `mapTouchToScreen(rawX, rawY, sx, sy);`), whereas every other .cpp in the repo (sd_card.cpp, bench_math.cpp, benchmark.cpp, benchmark_raw.cpp, spi_scale_benchmark.cpp, card_format.cpp, touch_calibration.cpp, ui_geometry.cpp, display_ui.cpp, display_ui_internal.cpp, display_progress.cpp, display_results.cpp, main.cpp) wraps nearly every multi-argument call/declaration to one argument per line."
+      ],
+      "suggestion": "Reformat touch.h/touch.cpp to the one-argument-per-line style used throughout the rest of src/ (or, if the terser style is actually preferred, apply it project-wide) so this file pair doesn't require a different reading mode than everything else.",
+      "confidence": "medium",
+      "impact_scope": "module",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "convention_outlier",
+      "identifier": "touch_calibration_namespace_outlier",
+      "summary": "touch_calibration.cpp is the only file using an anonymous namespace for private helpers instead of `static`",
+      "related_files": [
+        "src/util/touch_calibration.cpp"
+      ],
+      "evidence": [
+        "touch_calibration.cpp wraps mapRange() and clampInt() in `namespace { ... }  // namespace` (lines 5-31).",
+        "Every other .cpp file with file-local helpers uses `static` for internal linkage instead: sd_card.cpp (`static void clearAttempts()`, `static void fillCardIdentity()`, `static void runConsistencyChecks()`, `static void printCardIdentity()`), benchmark.cpp (`static bool removeTestFile()`, `static bool timedFileWrite(...)`, `static bool timedFileRead(...)`, `static bool verifyFile(...)`), display_ui.cpp (`static bool hit(...)`, `static void drawButton(...)`), display_results.cpp (`static void drawHorizontalBar(...)`), main.cpp (`static void rescan()`, `static BenchMenuAction waitForBenchMenuAction()`, `static void runBenchMenu()`)."
+      ],
+      "suggestion": "Change mapRange/clampInt in touch_calibration.cpp from an anonymous namespace to `static` functions to match the internal-linkage idiom used by every other file in the codebase.",
+      "confidence": "high",
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "Two files (hardware/touch.*, util/touch_calibration.cpp) appear to have been written or edited in a separate pass from the rest of the codebase, missing the vertical-formatting and static-linkage conventions applied everywhere else."
+    ],
+    "likely_symptoms": [
+      "touch_module_formatting_island",
+      "touch_calibration_namespace_outlier"
+    ],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "convention_outlier": {
+      "add": [
+        {
+          "header": "Uniform naming across all directories",
+          "description": "camelCase functions, PascalCase types, and SCREAMING_SNAKE_CASE constants are applied without exception across benchmark/, hardware/, ui/, util/, and core/, so a developer can predict casing without checking a style guide.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Consistent static-linkage idiom for private helpers",
+          "description": "7 of 8 files with file-local helper functions use `static` for internal linkage (sd_card.cpp, benchmark.cpp, display_ui.cpp, display_results.cpp, main.cpp, plus header-only files); this is the codebase's established idiom against which touch_calibration.cpp's anonymous-namespace usage is an outlier.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Shared *_internal.h pattern for non-public internals",
+          "description": "benchmark_internal.h and display_ui_internal.h both use the same documented pattern (a header explicitly marked 'not part of the public X.h API') for internals shared across more than one .cpp in the same directory, applied consistently in two different subsystems.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Split-declaration/multi-implementation pattern is intentional, not inconsistent",
+          "description": "benchmark.h's two functions are implemented in separate benchmark.cpp/spi_scale_benchmark.cpp files, and display_ui.h's functions are split across display_ui.cpp/display_diagnostics.cpp/display_progress.cpp/display_results.cpp by screen concern. This is the same deliberate pattern used in two directories (group public declarations in one header, split implementations by cohesive sub-concern), not an inconsistency to unify.",
+          "settled": true,
+          "positive": false
+        },
+        {
+          "header": "Dominant vertical one-argument-per-line formatting style",
+          "description": "The large majority of files (benchmark/*, ui/*, util/card_format.cpp, util/touch_calibration.cpp, hardware/sd_card.cpp bodies, main.cpp) wrap multi-argument calls and declarations one argument per line; this is the baseline convention against which hardware/touch.* is a visible style island.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "batch": "contract_coherence",
+  "batch_index": 18,
+  "assessments": {
+    "contract_coherence": 88.0
+  },
+  "dimension_notes": {
+    "contract_coherence": {
+      "evidence": [
+        "src/hardware/sd_card.h / src/hardware/sd_card.cpp: getSd(), getCardInfo(), getAttempts(), getAttemptCount() are all pure read accessors with no hidden mutation, matching their 'get' naming.",
+        "src/ui/display_ui.h: uiHitTestHome() and uiHitTestBenchMenu() are pure predicates returning an action enum; they do not draw or mutate state, consistent with the 'HitTest' naming across both call sites.",
+        "src/util/ui_geometry.h computeBarFillWidth() docstring states 'Returns 0 if maxValue <= 0' and ui_geometry.cpp's implementation matches exactly.",
+        "src/benchmark/benchmark.h declares runQuickBenchmark() and runSpiScalingBenchmark() side by side with identical shape (no args, returns a result struct) and no documented side effects for either.",
+        "src/benchmark/spi_scale_benchmark.cpp: runSpiScalingBenchmark() calls scanCard() on the DMA-buffer-allocation-failure path and again unconditionally at the end of the function, fully re-qualifying SPI speeds and overwriting the global CardInfo and AttemptResult[] state used elsewhere (diagnostics screen, home screen).",
+        "The rescan side effect is explained only by a comment inside spi_scale_benchmark.cpp ('Scaling changes the active SdFat card state. Restore normal qualification/mount afterwards.') — this is invisible to a caller reading benchmark.h, and runQuickBenchmark() (declared immediately above it) has no equivalent behavior."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "confidence": "medium",
+      "issues_preventing_higher_score": "One sibling-function contract asymmetry: runSpiScalingBenchmark() performs a full, undocumented card rescan (global CardInfo/AttemptResult mutation) that its sibling runQuickBenchmark() does not, and this is not disclosed in the shared public header benchmark.h."
+    }
+  },
+  "dimension_judgment": {
+    "contract_coherence": {
+      "dimension_character": "The codebase is small and disciplined: computational helpers (bench_math, card_format, card_identity, ui_geometry, touch_calibration) carry docstrings that precisely match their implementations, accessors named getX are all side-effect-free reads, and error/success is communicated uniformly through explicit boolean/struct fields rather than mixed strategies. The one notable gap is a hidden, undocumented full-card-rescan side effect in runSpiScalingBenchmark that its header-adjacent sibling runQuickBenchmark does not share.",
+      "score_rationale": "Per the global anchors, this sits just below 90 ('minor local mismatches with low downstream impact') because the codebase overwhelmingly honors its contracts — pure functions match their docs exactly and naming reliably predicts behavior — but the single found defect is a real, if isolated, surprise: a caller reading benchmark.h cannot tell that one of two parallel benchmark entry points silently re-triggers a full hardware re-qualification and resets shared global state, while the other does not."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "contract_coherence",
+      "identifier": "spi_scale_benchmark_hidden_rescan",
+      "summary": "runSpiScalingBenchmark() silently re-runs full card scan, mutating global state, undocumented in benchmark.h",
+      "related_files": [
+        "src/benchmark/spi_scale_benchmark.cpp",
+        "src/benchmark/benchmark.h"
+      ],
+      "evidence": [
+        "spi_scale_benchmark.cpp calls scanCard() both in the buffer-allocation-failure early-return path and unconditionally after the scaling loop finishes.",
+        "scanCard() (sd_card.cpp) resets and repopulates the global CardInfo and AttemptResult[] state (used by the home screen and diagnostics screen) and prints a full '=== AUTO SPI QUALIFICATION ===' banner to Serial.",
+        "benchmark.h declares 'SpiScaleResult runSpiScalingBenchmark();' with zero documentation of this behavior, immediately next to 'BenchmarkResult runQuickBenchmark();' which has no equivalent side effect."
+      ],
+      "suggestion": "Add a one-line comment on the runSpiScalingBenchmark() declaration in benchmark.h stating that it re-qualifies and remounts the card as a side effect (mirroring the existing internal comment in spi_scale_benchmark.cpp), so the public contract discloses the behavior instead of only the implementation.",
+      "confidence": "medium",
+      "impact_scope": "module",
+      "fix_scope": "single_edit"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "contract_coherence": {
+      "add": [
+        {
+          "header": "Pure-function docstrings match implementation exactly",
+          "description": "bench_math.h, card_format.h, card_identity.h, ui_geometry.h, and touch_calibration.h document edge-case behavior (e.g. computeBarFillWidth's 'returns 0 if maxValue <= 0') and the corresponding .cpp files implement exactly what is documented, with no drift found.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "get-prefixed accessors are all side-effect-free",
+          "description": "getSd(), getCardInfo(), getAttempts(), and getAttemptCount() in sd_card.h/.cpp are pure reads of module-static state; none of them mutate on read, honoring the 'getX' naming contract consistently across the hardware module.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "uiHitTest* functions are pure predicates",
+          "description": "uiHitTestHome and uiHitTestBenchMenu only test coordinates against button rectangles and return an action enum; they never draw or mutate UI/global state, unlike the uiDraw*/uiShow* functions they pair with.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "runSpiScalingBenchmark has an undisclosed rescan side effect",
+          "description": "Unlike its sibling runQuickBenchmark, runSpiScalingBenchmark triggers a full scanCard() re-qualification (mutating global CardInfo/AttemptResult state) both on early failure and at normal completion; this is explained only in a .cpp-local comment, not in the shared benchmark.h header both functions are declared in.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

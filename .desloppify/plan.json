@@ -1,0 +1,2431 @@
+{
+  "version": 8,
+  "created": "2026-09-22T10:29:35+00:00",
+  "updated": "2026-09-22T20:28:23+00:00",
+  "queue_order": [
+    "subjective::abstraction_fitness",
+    "subjective::contract_coherence",
+    "subjective::convention_outlier",
+    "subjective::design_coherence",
+    "subjective::error_consistency",
+    "subjective::high_level_elegance",
+    "subjective::logic_clarity",
+    "subjective::type_safety"
+  ],
+  "deferred": [],
+  "skipped": {
+    "orphaned::src/display_ui.cpp": {
+      "issue_id": "orphaned::src/display_ui.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build. The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:05:20+00:00",
+      "review_after": null,
+      "skipped_at_scan": 5
+    },
+    "orphaned::src/benchmark.cpp": {
+      "issue_id": "orphaned::src/benchmark.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build. The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:05:20+00:00",
+      "review_after": null,
+      "skipped_at_scan": 5
+    },
+    "orphaned::src/sd_card.cpp": {
+      "issue_id": "orphaned::src/sd_card.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build. The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:05:20+00:00",
+      "review_after": null,
+      "skipped_at_scan": 5
+    },
+    "orphaned::src/touch.cpp": {
+      "issue_id": "orphaned::src/touch.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build. The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:05:20+00:00",
+      "review_after": null,
+      "skipped_at_scan": 5
+    },
+    "orphaned::src/diagnostics.cpp": {
+      "issue_id": "orphaned::src/diagnostics.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build. The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:05:20+00:00",
+      "review_after": null,
+      "skipped_at_scan": 5
+    },
+    "orphaned::src/bench_math.cpp": {
+      "issue_id": "orphaned::src/bench_math.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build. The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:05:20+00:00",
+      "review_after": null,
+      "skipped_at_scan": 5
+    },
+    "orphaned::src/card_format.cpp": {
+      "issue_id": "orphaned::src/card_format.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build. The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:05:20+00:00",
+      "review_after": null,
+      "skipped_at_scan": 5
+    },
+    "orphaned::src/card_identity.cpp": {
+      "issue_id": "orphaned::src/card_identity.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build. The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:05:20+00:00",
+      "review_after": null,
+      "skipped_at_scan": 5
+    },
+    "orphaned::src/touch_calibration.cpp": {
+      "issue_id": "orphaned::src/touch_calibration.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build. The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:05:20+00:00",
+      "review_after": null,
+      "skipped_at_scan": 5
+    },
+    "orphaned::src/ui_geometry.cpp": {
+      "issue_id": "orphaned::src/ui_geometry.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build. The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:05:20+00:00",
+      "review_after": null,
+      "skipped_at_scan": 5
+    },
+    "orphaned::src/display_results.cpp": {
+      "issue_id": "orphaned::src/display_results.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build. The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:05:20+00:00",
+      "review_after": null,
+      "skipped_at_scan": 5
+    },
+    "orphaned::src/display_diagnostics.cpp": {
+      "issue_id": "orphaned::src/display_diagnostics.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build. The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:05:20+00:00",
+      "review_after": null,
+      "skipped_at_scan": 5
+    },
+    "orphaned::src/spi_scale_benchmark.cpp": {
+      "issue_id": "orphaned::src/spi_scale_benchmark.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build. The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:05:20+00:00",
+      "review_after": null,
+      "skipped_at_scan": 5
+    },
+    "orphaned::src/display_progress.cpp": {
+      "issue_id": "orphaned::src/display_progress.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build. The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:05:20+00:00",
+      "review_after": null,
+      "skipped_at_scan": 5
+    },
+    "orphaned::src/benchmark_raw.cpp": {
+      "issue_id": "orphaned::src/benchmark_raw.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build. The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:05:20+00:00",
+      "review_after": null,
+      "skipped_at_scan": 5
+    },
+    "orphaned::src/display_ui_internal.cpp": {
+      "issue_id": "orphaned::src/display_ui_internal.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build. The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:05:20+00:00",
+      "review_after": null,
+      "skipped_at_scan": 5
+    },
+    "test_coverage::src/sd_card.h::untested_module": {
+      "issue_id": "test_coverage::src/sd_card.h::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (sd_card.cpp, benchmark.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, touch.cpp, display_ui*.cpp, diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (sd_card.h, display_ui.h, benchmark_internal.h, touch.h, diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) has already been extracted into bench_math/card_format/card_identity/touch_calibration/ui_geometry and is covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:13:16+00:00",
+      "review_after": null,
+      "skipped_at_scan": 7
+    },
+    "test_coverage::src/diagnostics.cpp::untested_module": {
+      "issue_id": "test_coverage::src/diagnostics.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (sd_card.cpp, benchmark.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, touch.cpp, display_ui*.cpp, diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (sd_card.h, display_ui.h, benchmark_internal.h, touch.h, diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) has already been extracted into bench_math/card_format/card_identity/touch_calibration/ui_geometry and is covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:13:16+00:00",
+      "review_after": null,
+      "skipped_at_scan": 7
+    },
+    "test_coverage::src/touch.cpp::untested_module": {
+      "issue_id": "test_coverage::src/touch.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (sd_card.cpp, benchmark.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, touch.cpp, display_ui*.cpp, diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (sd_card.h, display_ui.h, benchmark_internal.h, touch.h, diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) has already been extracted into bench_math/card_format/card_identity/touch_calibration/ui_geometry and is covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:13:16+00:00",
+      "review_after": null,
+      "skipped_at_scan": 7
+    },
+    "test_coverage::src/benchmark.cpp::untested_module": {
+      "issue_id": "test_coverage::src/benchmark.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (sd_card.cpp, benchmark.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, touch.cpp, display_ui*.cpp, diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (sd_card.h, display_ui.h, benchmark_internal.h, touch.h, diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) has already been extracted into bench_math/card_format/card_identity/touch_calibration/ui_geometry and is covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:13:16+00:00",
+      "review_after": null,
+      "skipped_at_scan": 7
+    },
+    "test_coverage::src/main.cpp::untested_module": {
+      "issue_id": "test_coverage::src/main.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (sd_card.cpp, benchmark.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, touch.cpp, display_ui*.cpp, diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (sd_card.h, display_ui.h, benchmark_internal.h, touch.h, diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) has already been extracted into bench_math/card_format/card_identity/touch_calibration/ui_geometry and is covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:13:16+00:00",
+      "review_after": null,
+      "skipped_at_scan": 7
+    },
+    "test_coverage::src/display_ui.cpp::untested_module": {
+      "issue_id": "test_coverage::src/display_ui.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (sd_card.cpp, benchmark.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, touch.cpp, display_ui*.cpp, diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (sd_card.h, display_ui.h, benchmark_internal.h, touch.h, diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) has already been extracted into bench_math/card_format/card_identity/touch_calibration/ui_geometry and is covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:13:16+00:00",
+      "review_after": null,
+      "skipped_at_scan": 7
+    },
+    "test_coverage::src/sd_card.cpp::untested_module": {
+      "issue_id": "test_coverage::src/sd_card.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (sd_card.cpp, benchmark.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, touch.cpp, display_ui*.cpp, diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (sd_card.h, display_ui.h, benchmark_internal.h, touch.h, diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) has already been extracted into bench_math/card_format/card_identity/touch_calibration/ui_geometry and is covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:13:16+00:00",
+      "review_after": null,
+      "skipped_at_scan": 7
+    },
+    "test_coverage::src/display_ui.h::untested_module": {
+      "issue_id": "test_coverage::src/display_ui.h::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (sd_card.cpp, benchmark.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, touch.cpp, display_ui*.cpp, diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (sd_card.h, display_ui.h, benchmark_internal.h, touch.h, diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) has already been extracted into bench_math/card_format/card_identity/touch_calibration/ui_geometry and is covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:13:16+00:00",
+      "review_after": null,
+      "skipped_at_scan": 7
+    },
+    "test_coverage::src/display_diagnostics.cpp::untested_module": {
+      "issue_id": "test_coverage::src/display_diagnostics.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (sd_card.cpp, benchmark.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, touch.cpp, display_ui*.cpp, diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (sd_card.h, display_ui.h, benchmark_internal.h, touch.h, diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) has already been extracted into bench_math/card_format/card_identity/touch_calibration/ui_geometry and is covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:13:16+00:00",
+      "review_after": null,
+      "skipped_at_scan": 7
+    },
+    "test_coverage::src/spi_scale_benchmark.cpp::untested_module": {
+      "issue_id": "test_coverage::src/spi_scale_benchmark.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (sd_card.cpp, benchmark.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, touch.cpp, display_ui*.cpp, diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (sd_card.h, display_ui.h, benchmark_internal.h, touch.h, diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) has already been extracted into bench_math/card_format/card_identity/touch_calibration/ui_geometry and is covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:13:16+00:00",
+      "review_after": null,
+      "skipped_at_scan": 7
+    },
+    "test_coverage::src/display_results.cpp::untested_module": {
+      "issue_id": "test_coverage::src/display_results.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (sd_card.cpp, benchmark.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, touch.cpp, display_ui*.cpp, diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (sd_card.h, display_ui.h, benchmark_internal.h, touch.h, diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) has already been extracted into bench_math/card_format/card_identity/touch_calibration/ui_geometry and is covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:13:16+00:00",
+      "review_after": null,
+      "skipped_at_scan": 7
+    },
+    "test_coverage::src/benchmark_internal.h::untested_module": {
+      "issue_id": "test_coverage::src/benchmark_internal.h::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (sd_card.cpp, benchmark.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, touch.cpp, display_ui*.cpp, diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (sd_card.h, display_ui.h, benchmark_internal.h, touch.h, diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) has already been extracted into bench_math/card_format/card_identity/touch_calibration/ui_geometry and is covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:13:16+00:00",
+      "review_after": null,
+      "skipped_at_scan": 7
+    },
+    "test_coverage::src/benchmark_raw.cpp::untested_module": {
+      "issue_id": "test_coverage::src/benchmark_raw.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (sd_card.cpp, benchmark.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, touch.cpp, display_ui*.cpp, diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (sd_card.h, display_ui.h, benchmark_internal.h, touch.h, diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) has already been extracted into bench_math/card_format/card_identity/touch_calibration/ui_geometry and is covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:13:16+00:00",
+      "review_after": null,
+      "skipped_at_scan": 7
+    },
+    "test_coverage::src/display_ui_internal.h::untested_module": {
+      "issue_id": "test_coverage::src/display_ui_internal.h::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (sd_card.cpp, benchmark.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, touch.cpp, display_ui*.cpp, diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (sd_card.h, display_ui.h, benchmark_internal.h, touch.h, diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) has already been extracted into bench_math/card_format/card_identity/touch_calibration/ui_geometry and is covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:13:16+00:00",
+      "review_after": null,
+      "skipped_at_scan": 7
+    },
+    "test_coverage::src/display_ui_internal.cpp::untested_module": {
+      "issue_id": "test_coverage::src/display_ui_internal.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (sd_card.cpp, benchmark.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, touch.cpp, display_ui*.cpp, diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (sd_card.h, display_ui.h, benchmark_internal.h, touch.h, diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) has already been extracted into bench_math/card_format/card_identity/touch_calibration/ui_geometry and is covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:13:16+00:00",
+      "review_after": null,
+      "skipped_at_scan": 7
+    },
+    "test_coverage::src/display_progress.cpp::untested_module": {
+      "issue_id": "test_coverage::src/display_progress.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (sd_card.cpp, benchmark.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, touch.cpp, display_ui*.cpp, diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (sd_card.h, display_ui.h, benchmark_internal.h, touch.h, diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) has already been extracted into bench_math/card_format/card_identity/touch_calibration/ui_geometry and is covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:13:16+00:00",
+      "review_after": null,
+      "skipped_at_scan": 7
+    },
+    "orphaned::src/benchmark/benchmark.cpp": {
+      "issue_id": "orphaned::src/benchmark/benchmark.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build (now reorganized into core/hardware/benchmark/ui/util subdirectories, same principle applies). The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:22:45+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "orphaned::src/hardware/sd_card.cpp": {
+      "issue_id": "orphaned::src/hardware/sd_card.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build (now reorganized into core/hardware/benchmark/ui/util subdirectories, same principle applies). The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:22:45+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "orphaned::src/ui/display_results.cpp": {
+      "issue_id": "orphaned::src/ui/display_results.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build (now reorganized into core/hardware/benchmark/ui/util subdirectories, same principle applies). The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:22:45+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "orphaned::src/ui/display_ui.cpp": {
+      "issue_id": "orphaned::src/ui/display_ui.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build (now reorganized into core/hardware/benchmark/ui/util subdirectories, same principle applies). The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:22:45+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "orphaned::src/ui/display_diagnostics.cpp": {
+      "issue_id": "orphaned::src/ui/display_diagnostics.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build (now reorganized into core/hardware/benchmark/ui/util subdirectories, same principle applies). The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:22:45+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "orphaned::src/benchmark/spi_scale_benchmark.cpp": {
+      "issue_id": "orphaned::src/benchmark/spi_scale_benchmark.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build (now reorganized into core/hardware/benchmark/ui/util subdirectories, same principle applies). The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:22:45+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "orphaned::src/ui/display_progress.cpp": {
+      "issue_id": "orphaned::src/ui/display_progress.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build (now reorganized into core/hardware/benchmark/ui/util subdirectories, same principle applies). The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:22:45+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "orphaned::src/benchmark/benchmark_raw.cpp": {
+      "issue_id": "orphaned::src/benchmark/benchmark_raw.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build (now reorganized into core/hardware/benchmark/ui/util subdirectories, same principle applies). The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:22:45+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "orphaned::src/benchmark/bench_math.cpp": {
+      "issue_id": "orphaned::src/benchmark/bench_math.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build (now reorganized into core/hardware/benchmark/ui/util subdirectories, same principle applies). The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:22:45+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "orphaned::src/hardware/touch.cpp": {
+      "issue_id": "orphaned::src/hardware/touch.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build (now reorganized into core/hardware/benchmark/ui/util subdirectories, same principle applies). The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:22:45+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "orphaned::src/ui/display_ui_internal.cpp": {
+      "issue_id": "orphaned::src/ui/display_ui_internal.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build (now reorganized into core/hardware/benchmark/ui/util subdirectories, same principle applies). The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:22:45+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "orphaned::src/util/card_format.cpp": {
+      "issue_id": "orphaned::src/util/card_format.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build (now reorganized into core/hardware/benchmark/ui/util subdirectories, same principle applies). The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:22:45+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "orphaned::src/util/touch_calibration.cpp": {
+      "issue_id": "orphaned::src/util/touch_calibration.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build (now reorganized into core/hardware/benchmark/ui/util subdirectories, same principle applies). The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:22:45+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "orphaned::src/util/card_identity.cpp": {
+      "issue_id": "orphaned::src/util/card_identity.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build (now reorganized into core/hardware/benchmark/ui/util subdirectories, same principle applies). The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:22:45+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "orphaned::src/ui/ui_geometry.cpp": {
+      "issue_id": "orphaned::src/ui/ui_geometry.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build (now reorganized into core/hardware/benchmark/ui/util subdirectories, same principle applies). The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:22:45+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "orphaned::src/ui/diagnostics.cpp": {
+      "issue_id": "orphaned::src/ui/diagnostics.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: every non-main .c/.cc/.cpp/.cxx file here is a proper implementation file for its paired header, compiled as its own linked translation unit per platformio.ini's src/ build (now reorganized into core/hardware/benchmark/ui/util subdirectories, same principle applies). The cxx orphaned detector only tracks #include edges, so it cannot see .cpp files are reachable via the linker rather than #include, and flags every correctly split implementation file as 'orphaned' regardless of real usage. Verified each file's declared symbols have real callers.",
+      "created_at": "2026-09-22T11:22:45+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "test_coverage::src/ui/display_diagnostics.cpp::untested_module": {
+      "issue_id": "test_coverage::src/ui/display_diagnostics.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (hardware/sd_card.cpp, benchmark/benchmark.cpp, benchmark/benchmark_raw.cpp, benchmark/spi_scale_benchmark.cpp, hardware/touch.cpp, ui/display_ui*.cpp, ui/diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (hardware/sd_card.h, ui/display_ui.h, benchmark/benchmark_internal.h, hardware/touch.h, ui/diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) is extracted into benchmark/bench_math, util/card_format, util/card_identity, util/touch_calibration, ui/ui_geometry and covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:23:24+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "test_coverage::src/benchmark/benchmark.cpp::untested_module": {
+      "issue_id": "test_coverage::src/benchmark/benchmark.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (hardware/sd_card.cpp, benchmark/benchmark.cpp, benchmark/benchmark_raw.cpp, benchmark/spi_scale_benchmark.cpp, hardware/touch.cpp, ui/display_ui*.cpp, ui/diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (hardware/sd_card.h, ui/display_ui.h, benchmark/benchmark_internal.h, hardware/touch.h, ui/diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) is extracted into benchmark/bench_math, util/card_format, util/card_identity, util/touch_calibration, ui/ui_geometry and covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:23:24+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "test_coverage::src/ui/display_progress.cpp::untested_module": {
+      "issue_id": "test_coverage::src/ui/display_progress.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (hardware/sd_card.cpp, benchmark/benchmark.cpp, benchmark/benchmark_raw.cpp, benchmark/spi_scale_benchmark.cpp, hardware/touch.cpp, ui/display_ui*.cpp, ui/diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (hardware/sd_card.h, ui/display_ui.h, benchmark/benchmark_internal.h, hardware/touch.h, ui/diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) is extracted into benchmark/bench_math, util/card_format, util/card_identity, util/touch_calibration, ui/ui_geometry and covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:23:24+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "test_coverage::src/hardware/touch.cpp::untested_module": {
+      "issue_id": "test_coverage::src/hardware/touch.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (hardware/sd_card.cpp, benchmark/benchmark.cpp, benchmark/benchmark_raw.cpp, benchmark/spi_scale_benchmark.cpp, hardware/touch.cpp, ui/display_ui*.cpp, ui/diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (hardware/sd_card.h, ui/display_ui.h, benchmark/benchmark_internal.h, hardware/touch.h, ui/diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) is extracted into benchmark/bench_math, util/card_format, util/card_identity, util/touch_calibration, ui/ui_geometry and covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:23:24+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "test_coverage::src/ui/diagnostics.cpp::untested_module": {
+      "issue_id": "test_coverage::src/ui/diagnostics.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (hardware/sd_card.cpp, benchmark/benchmark.cpp, benchmark/benchmark_raw.cpp, benchmark/spi_scale_benchmark.cpp, hardware/touch.cpp, ui/display_ui*.cpp, ui/diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (hardware/sd_card.h, ui/display_ui.h, benchmark/benchmark_internal.h, hardware/touch.h, ui/diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) is extracted into benchmark/bench_math, util/card_format, util/card_identity, util/touch_calibration, ui/ui_geometry and covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:23:24+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "test_coverage::src/hardware/sd_card.cpp::untested_module": {
+      "issue_id": "test_coverage::src/hardware/sd_card.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (hardware/sd_card.cpp, benchmark/benchmark.cpp, benchmark/benchmark_raw.cpp, benchmark/spi_scale_benchmark.cpp, hardware/touch.cpp, ui/display_ui*.cpp, ui/diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (hardware/sd_card.h, ui/display_ui.h, benchmark/benchmark_internal.h, hardware/touch.h, ui/diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) is extracted into benchmark/bench_math, util/card_format, util/card_identity, util/touch_calibration, ui/ui_geometry and covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:23:24+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "test_coverage::src/ui/display_ui_internal.cpp::untested_module": {
+      "issue_id": "test_coverage::src/ui/display_ui_internal.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (hardware/sd_card.cpp, benchmark/benchmark.cpp, benchmark/benchmark_raw.cpp, benchmark/spi_scale_benchmark.cpp, hardware/touch.cpp, ui/display_ui*.cpp, ui/diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (hardware/sd_card.h, ui/display_ui.h, benchmark/benchmark_internal.h, hardware/touch.h, ui/diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) is extracted into benchmark/bench_math, util/card_format, util/card_identity, util/touch_calibration, ui/ui_geometry and covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:23:24+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "test_coverage::src/ui/display_results.cpp::untested_module": {
+      "issue_id": "test_coverage::src/ui/display_results.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (hardware/sd_card.cpp, benchmark/benchmark.cpp, benchmark/benchmark_raw.cpp, benchmark/spi_scale_benchmark.cpp, hardware/touch.cpp, ui/display_ui*.cpp, ui/diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (hardware/sd_card.h, ui/display_ui.h, benchmark/benchmark_internal.h, hardware/touch.h, ui/diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) is extracted into benchmark/bench_math, util/card_format, util/card_identity, util/touch_calibration, ui/ui_geometry and covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:23:24+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "test_coverage::src/benchmark/benchmark_internal.h::untested_module": {
+      "issue_id": "test_coverage::src/benchmark/benchmark_internal.h::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (hardware/sd_card.cpp, benchmark/benchmark.cpp, benchmark/benchmark_raw.cpp, benchmark/spi_scale_benchmark.cpp, hardware/touch.cpp, ui/display_ui*.cpp, ui/diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (hardware/sd_card.h, ui/display_ui.h, benchmark/benchmark_internal.h, hardware/touch.h, ui/diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) is extracted into benchmark/bench_math, util/card_format, util/card_identity, util/touch_calibration, ui/ui_geometry and covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:23:24+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "test_coverage::src/benchmark/spi_scale_benchmark.cpp::untested_module": {
+      "issue_id": "test_coverage::src/benchmark/spi_scale_benchmark.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (hardware/sd_card.cpp, benchmark/benchmark.cpp, benchmark/benchmark_raw.cpp, benchmark/spi_scale_benchmark.cpp, hardware/touch.cpp, ui/display_ui*.cpp, ui/diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (hardware/sd_card.h, ui/display_ui.h, benchmark/benchmark_internal.h, hardware/touch.h, ui/diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) is extracted into benchmark/bench_math, util/card_format, util/card_identity, util/touch_calibration, ui/ui_geometry and covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:23:24+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "test_coverage::src/benchmark/benchmark_raw.cpp::untested_module": {
+      "issue_id": "test_coverage::src/benchmark/benchmark_raw.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (hardware/sd_card.cpp, benchmark/benchmark.cpp, benchmark/benchmark_raw.cpp, benchmark/spi_scale_benchmark.cpp, hardware/touch.cpp, ui/display_ui*.cpp, ui/diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (hardware/sd_card.h, ui/display_ui.h, benchmark/benchmark_internal.h, hardware/touch.h, ui/diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) is extracted into benchmark/bench_math, util/card_format, util/card_identity, util/touch_calibration, ui/ui_geometry and covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:23:24+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "test_coverage::src/ui/display_ui_internal.h::untested_module": {
+      "issue_id": "test_coverage::src/ui/display_ui_internal.h::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (hardware/sd_card.cpp, benchmark/benchmark.cpp, benchmark/benchmark_raw.cpp, benchmark/spi_scale_benchmark.cpp, hardware/touch.cpp, ui/display_ui*.cpp, ui/diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (hardware/sd_card.h, ui/display_ui.h, benchmark/benchmark_internal.h, hardware/touch.h, ui/diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) is extracted into benchmark/bench_math, util/card_format, util/card_identity, util/touch_calibration, ui/ui_geometry and covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:23:24+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "test_coverage::src/ui/display_ui.h::untested_module": {
+      "issue_id": "test_coverage::src/ui/display_ui.h::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (hardware/sd_card.cpp, benchmark/benchmark.cpp, benchmark/benchmark_raw.cpp, benchmark/spi_scale_benchmark.cpp, hardware/touch.cpp, ui/display_ui*.cpp, ui/diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (hardware/sd_card.h, ui/display_ui.h, benchmark/benchmark_internal.h, hardware/touch.h, ui/diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) is extracted into benchmark/bench_math, util/card_format, util/card_identity, util/touch_calibration, ui/ui_geometry and covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:23:24+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "test_coverage::src/ui/display_ui.cpp::untested_module": {
+      "issue_id": "test_coverage::src/ui/display_ui.cpp::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (hardware/sd_card.cpp, benchmark/benchmark.cpp, benchmark/benchmark_raw.cpp, benchmark/spi_scale_benchmark.cpp, hardware/touch.cpp, ui/display_ui*.cpp, ui/diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (hardware/sd_card.h, ui/display_ui.h, benchmark/benchmark_internal.h, hardware/touch.h, ui/diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) is extracted into benchmark/bench_math, util/card_format, util/card_identity, util/touch_calibration, ui/ui_geometry and covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:23:24+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "test_coverage::src/hardware/sd_card.h::untested_module": {
+      "issue_id": "test_coverage::src/hardware/sd_card.h::untested_module",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (hardware/sd_card.cpp, benchmark/benchmark.cpp, benchmark/benchmark_raw.cpp, benchmark/spi_scale_benchmark.cpp, hardware/touch.cpp, ui/display_ui*.cpp, ui/diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (hardware/sd_card.h, ui/display_ui.h, benchmark/benchmark_internal.h, hardware/touch.h, ui/diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) is extracted into benchmark/bench_math, util/card_format, util/card_identity, util/touch_calibration, ui/ui_geometry and covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these files truly have no automated test coverage today, and adding one would require either a disproportionate hardware-mocking effort or would produce a vacuous test with no real assertions. This is documented, honest accepted debt, not a hidden gap.",
+      "created_at": "2026-09-22T11:23:24+00:00",
+      "review_after": null,
+      "skipped_at_scan": 8
+    },
+    "review::.::holistic::design_coherence::speed_qualification_loop_duplicated_across_files": {
+      "issue_id": "review::.::holistic::design_coherence::speed_qualification_loop_duplicated_across_files",
+      "kind": "permanent",
+      "reason": null,
+      "note": "Reviewer's own assessment: 'with only two call sites the duplication is tolerable as-is; if a third speed-iterating routine is added, factor the shared scaffold into one helper.' Accepting as documented debt rather than introducing a premature abstraction for two call sites.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: this is genuine, deliberately deferred debt per the reviewer's own stated threshold (a third call site), not an unaddressed defect.",
+      "created_at": "2026-09-22T15:09:00+00:00",
+      "review_after": null,
+      "skipped_at_scan": 11
+    },
+    "review::.::holistic::error_consistency::error_field_surfacing_channel_asymmetry": {
+      "issue_id": "review::.::holistic::error_consistency::error_field_surfacing_channel_asymmetry",
+      "kind": "permanent",
+      "reason": null,
+      "note": "CardInfo.volumeErrorCode and BenchmarkResult.ioErrorCode are Serial-only by deliberate scope choice, not oversight: showing them on the TFT would mean adding new UI elements to the already-compact home/benchmark-result screens (unlike AttemptResult, which has a dedicated diagnostics screen with room for a per-attempt row, and SpiScalePoint, which reuses the existing SPI-scale summary line). Serial output remains the full diagnostic channel for these two; a TFT surface for them is a real feature addition (new screen space/layout), not a small consistency fix, and is out of scope for this cleanup pass.",
+      "attestation": "I have reviewed this against the code and I am not gaming the score: this is a genuine, considered scope boundary (avoiding a UI feature addition) rather than an unaddressed defect, and I'm documenting it honestly instead of silently dropping it.",
+      "created_at": "2026-09-22T20:20:06+00:00",
+      "review_after": null,
+      "skipped_at_scan": 15
+    },
+    "orphaned::src/hardware/card_identity.cpp": {
+      "issue_id": "orphaned::src/hardware/card_identity.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these are proper implementation files for their paired headers, compiled as their own linked translation units. The cxx orphaned detector only tracks #include edges and cannot see .cpp files are reachable via the linker rather than #include, so it flags every correctly split implementation file as 'orphaned' regardless of real usage. Same false-positive category already documented earlier this session.",
+      "created_at": "2026-09-22T20:21:25+00:00",
+      "review_after": null,
+      "skipped_at_scan": 16
+    },
+    "orphaned::src/hardware/card_format.cpp": {
+      "issue_id": "orphaned::src/hardware/card_format.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these are proper implementation files for their paired headers, compiled as their own linked translation units. The cxx orphaned detector only tracks #include edges and cannot see .cpp files are reachable via the linker rather than #include, so it flags every correctly split implementation file as 'orphaned' regardless of real usage. Same false-positive category already documented earlier this session.",
+      "created_at": "2026-09-22T20:21:25+00:00",
+      "review_after": null,
+      "skipped_at_scan": 16
+    },
+    "orphaned::src/hardware/touch_calibration.cpp": {
+      "issue_id": "orphaned::src/hardware/touch_calibration.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: these are proper implementation files for their paired headers, compiled as their own linked translation units. The cxx orphaned detector only tracks #include edges and cannot see .cpp files are reachable via the linker rather than #include, so it flags every correctly split implementation file as 'orphaned' regardless of real usage. Same false-positive category already documented earlier this session.",
+      "created_at": "2026-09-22T20:21:25+00:00",
+      "review_after": null,
+      "skipped_at_scan": 16
+    },
+    "orphaned::src/benchmark/benchmark_chunked_io.cpp": {
+      "issue_id": "orphaned::src/benchmark/benchmark_chunked_io.cpp",
+      "kind": "false_positive",
+      "reason": null,
+      "note": null,
+      "attestation": "I have reviewed this against the code and I am not gaming the score: proper implementation file for its paired header, compiled as its own linked translation unit. Same documented false-positive category as this session's earlier orphaned markings.",
+      "created_at": "2026-09-22T20:27:57+00:00",
+      "review_after": null,
+      "skipped_at_scan": 17
+    }
+  },
+  "active_cluster": null,
+  "overrides": {
+    "test_coverage::src/display_ui.cpp": {
+      "issue_id": "test_coverage::src/display_ui.cpp",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": null,
+      "updated_at": "2026-09-22T10:31:24+00:00"
+    },
+    "test_coverage::src/benchmark.cpp": {
+      "issue_id": "test_coverage::src/benchmark.cpp",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": null,
+      "updated_at": "2026-09-22T10:31:24+00:00"
+    },
+    "test_coverage::src/sd_card.cpp": {
+      "issue_id": "test_coverage::src/sd_card.cpp",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": null,
+      "updated_at": "2026-09-22T10:31:24+00:00"
+    },
+    "test_coverage::src/main.cpp": {
+      "issue_id": "test_coverage::src/main.cpp",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": null,
+      "updated_at": "2026-09-22T10:31:24+00:00"
+    },
+    "test_coverage::src/touch.cpp": {
+      "issue_id": "test_coverage::src/touch.cpp",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": null,
+      "updated_at": "2026-09-22T10:31:24+00:00"
+    },
+    "test_coverage::src/app_types.h": {
+      "issue_id": "test_coverage::src/app_types.h",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": null,
+      "updated_at": "2026-09-22T10:31:24+00:00"
+    },
+    "test_coverage::src/display_ui.h": {
+      "issue_id": "test_coverage::src/display_ui.h",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": null,
+      "updated_at": "2026-09-22T10:31:24+00:00"
+    },
+    "test_coverage::src/sd_card.h": {
+      "issue_id": "test_coverage::src/sd_card.h",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": null,
+      "updated_at": "2026-09-22T10:31:24+00:00"
+    },
+    "test_coverage::src/diagnostics.cpp": {
+      "issue_id": "test_coverage::src/diagnostics.cpp",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": null,
+      "updated_at": "2026-09-22T10:31:24+00:00"
+    },
+    "stale_exclude::.pio::.pio": {
+      "issue_id": "stale_exclude::.pio::.pio",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": null,
+      "updated_at": "2026-09-22T20:25:52+00:00"
+    },
+    "stale_exclude::.vscode::.vscode": {
+      "issue_id": "stale_exclude::.vscode::.vscode",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": null,
+      "updated_at": "2026-09-22T20:25:52+00:00"
+    },
+    "subjective::abstraction_fitness": {
+      "issue_id": "subjective::abstraction_fitness",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": "auto/stale-review",
+      "updated_at": "2026-09-22T20:25:52+00:00"
+    },
+    "subjective::api_surface_coherence": {
+      "issue_id": "subjective::api_surface_coherence",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": null,
+      "updated_at": "2026-09-22T20:21:25+00:00"
+    },
+    "subjective::authorization_consistency": {
+      "issue_id": "subjective::authorization_consistency",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": null,
+      "updated_at": "2026-09-22T20:21:25+00:00"
+    },
+    "subjective::contract_coherence": {
+      "issue_id": "subjective::contract_coherence",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": "auto/stale-review",
+      "updated_at": "2026-09-22T20:25:52+00:00"
+    },
+    "subjective::dependency_health": {
+      "issue_id": "subjective::dependency_health",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": null,
+      "updated_at": "2026-09-22T20:21:25+00:00"
+    },
+    "subjective::high_level_elegance": {
+      "issue_id": "subjective::high_level_elegance",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": "auto/stale-review",
+      "updated_at": "2026-09-22T20:25:52+00:00"
+    },
+    "subjective::incomplete_migration": {
+      "issue_id": "subjective::incomplete_migration",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": null,
+      "updated_at": "2026-09-22T20:21:25+00:00"
+    },
+    "subjective::initialization_coupling": {
+      "issue_id": "subjective::initialization_coupling",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": null,
+      "updated_at": "2026-09-22T20:21:25+00:00"
+    },
+    "subjective::logic_clarity": {
+      "issue_id": "subjective::logic_clarity",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": "auto/stale-review",
+      "updated_at": "2026-09-22T20:25:52+00:00"
+    },
+    "subjective::type_safety": {
+      "issue_id": "subjective::type_safety",
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "cluster": "auto/stale-review",
+      "updated_at": "2026-09-22T20:25:52+00:00"
+    },
+    "test_coverage::src/benchmark/benchmark.h::untested_module": {
+      "issue_id": "test_coverage::src/benchmark/benchmark.h::untested_module",
+      "created_at": "2026-09-22T20:21:25+00:00",
+      "cluster": null,
+      "updated_at": "2026-09-22T20:28:23+00:00"
+    },
+    "test_coverage::src/hardware/touch.h::untested_module": {
+      "issue_id": "test_coverage::src/hardware/touch.h::untested_module",
+      "created_at": "2026-09-22T20:21:25+00:00",
+      "cluster": null,
+      "updated_at": "2026-09-22T20:28:23+00:00"
+    },
+    "subjective::convention_outlier": {
+      "issue_id": "subjective::convention_outlier",
+      "created_at": "2026-09-22T20:21:25+00:00",
+      "cluster": "auto/stale-review",
+      "updated_at": "2026-09-22T20:25:52+00:00"
+    },
+    "subjective::design_coherence": {
+      "issue_id": "subjective::design_coherence",
+      "created_at": "2026-09-22T20:21:25+00:00",
+      "cluster": "auto/stale-review",
+      "updated_at": "2026-09-22T20:25:52+00:00"
+    },
+    "subjective::error_consistency": {
+      "issue_id": "subjective::error_consistency",
+      "created_at": "2026-09-22T20:21:25+00:00",
+      "cluster": "auto/stale-review",
+      "updated_at": "2026-09-22T20:25:52+00:00"
+    },
+    "test_coverage::src/benchmark/benchmark_chunked_io.cpp::untested_module": {
+      "issue_id": "test_coverage::src/benchmark/benchmark_chunked_io.cpp::untested_module",
+      "created_at": "2026-09-22T20:25:52+00:00",
+      "cluster": null,
+      "updated_at": "2026-09-22T20:28:23+00:00"
+    }
+  },
+  "clusters": {
+    "auto/stale_exclude": {
+      "name": "auto/stale_exclude",
+      "description": "Fix 2 stale exclude issues",
+      "issue_ids": [],
+      "created_at": "2026-09-22T10:29:35+00:00",
+      "updated_at": "2026-09-22T20:25:52+00:00",
+      "auto": true,
+      "cluster_key": "detector::stale_exclude",
+      "action": "remove stale exclusion or verify it's still needed",
+      "execution_status": "review",
+      "user_modified": false,
+      "action_type": "manual_fix",
+      "execution_policy": "planned_only"
+    },
+    "auto/test_coverage-untested_module": {
+      "name": "auto/test_coverage-untested_module",
+      "description": "Fix 3 test coverage issues",
+      "issue_ids": [],
+      "created_at": "2026-09-22T20:21:25+00:00",
+      "updated_at": "2026-09-22T20:25:52+00:00",
+      "auto": true,
+      "cluster_key": "detector::test_coverage::untested_module",
+      "action": "review test coverage gaps",
+      "execution_status": "done",
+      "user_modified": false,
+      "action_type": "refactor",
+      "execution_policy": "planned_only"
+    },
+    "auto/stale-review": {
+      "name": "auto/stale-review",
+      "description": "Re-review 8 stale subjective dimensions",
+      "issue_ids": [
+        "subjective::abstraction_fitness",
+        "subjective::contract_coherence",
+        "subjective::convention_outlier",
+        "subjective::design_coherence",
+        "subjective::error_consistency",
+        "subjective::high_level_elegance",
+        "subjective::logic_clarity",
+        "subjective::type_safety"
+      ],
+      "created_at": "2026-09-22T20:21:25+00:00",
+      "updated_at": "2026-09-22T20:21:25+00:00",
+      "auto": true,
+      "cluster_key": "subjective::stale",
+      "action": "desloppify review --prepare --dimensions abstraction_fitness,contract_coherence,convention_outlier,design_coherence,error_consistency,high_level_elegance,logic_clarity,type_safety",
+      "execution_status": "review",
+      "user_modified": false,
+      "action_type": "manual_fix",
+      "execution_policy": "planned_only"
+    }
+  },
+  "superseded": {
+    "test_coverage::src/app_types.h": {
+      "original_id": "test_coverage::src/app_types.h",
+      "original_detector": "",
+      "original_file": "",
+      "original_summary": "",
+      "status": "superseded",
+      "superseded_at": "2026-09-22T10:31:24+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "test_coverage::src/benchmark.cpp": {
+      "original_id": "test_coverage::src/benchmark.cpp",
+      "original_detector": "",
+      "original_file": "",
+      "original_summary": "",
+      "status": "superseded",
+      "superseded_at": "2026-09-22T10:31:24+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "test_coverage::src/diagnostics.cpp": {
+      "original_id": "test_coverage::src/diagnostics.cpp",
+      "original_detector": "",
+      "original_file": "",
+      "original_summary": "",
+      "status": "superseded",
+      "superseded_at": "2026-09-22T10:31:24+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "test_coverage::src/display_ui.cpp": {
+      "original_id": "test_coverage::src/display_ui.cpp",
+      "original_detector": "",
+      "original_file": "",
+      "original_summary": "",
+      "status": "superseded",
+      "superseded_at": "2026-09-22T10:31:24+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "test_coverage::src/display_ui.h": {
+      "original_id": "test_coverage::src/display_ui.h",
+      "original_detector": "",
+      "original_file": "",
+      "original_summary": "",
+      "status": "superseded",
+      "superseded_at": "2026-09-22T10:31:24+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "test_coverage::src/main.cpp": {
+      "original_id": "test_coverage::src/main.cpp",
+      "original_detector": "",
+      "original_file": "",
+      "original_summary": "",
+      "status": "superseded",
+      "superseded_at": "2026-09-22T10:31:24+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "test_coverage::src/sd_card.cpp": {
+      "original_id": "test_coverage::src/sd_card.cpp",
+      "original_detector": "",
+      "original_file": "",
+      "original_summary": "",
+      "status": "superseded",
+      "superseded_at": "2026-09-22T10:31:24+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "test_coverage::src/sd_card.h": {
+      "original_id": "test_coverage::src/sd_card.h",
+      "original_detector": "",
+      "original_file": "",
+      "original_summary": "",
+      "status": "superseded",
+      "superseded_at": "2026-09-22T10:31:24+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "test_coverage::src/touch.cpp": {
+      "original_id": "test_coverage::src/touch.cpp",
+      "original_detector": "",
+      "original_file": "",
+      "original_summary": "",
+      "status": "superseded",
+      "superseded_at": "2026-09-22T10:31:24+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "stale_exclude::.pio::.pio": {
+      "original_id": "stale_exclude::.pio::.pio",
+      "original_detector": "stale_exclude",
+      "original_file": ".pio",
+      "original_summary": "Excluded directory '.pio' has 0 references from scanned code \u2014 may be stale",
+      "status": "superseded",
+      "superseded_at": "2026-09-22T11:22:23+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "stale_exclude::.vscode::.vscode": {
+      "original_id": "stale_exclude::.vscode::.vscode",
+      "original_detector": "stale_exclude",
+      "original_file": ".vscode",
+      "original_summary": "Excluded directory '.vscode' has 0 references from scanned code \u2014 may be stale",
+      "status": "superseded",
+      "superseded_at": "2026-09-22T11:22:23+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "test_coverage::src/benchmark/benchmark.h::untested_module": {
+      "original_id": "test_coverage::src/benchmark/benchmark.h::untested_module",
+      "original_detector": "test_coverage",
+      "original_file": "src/benchmark/benchmark.h",
+      "original_summary": "Untested module (32 LOC, 0 importers)",
+      "status": "superseded",
+      "superseded_at": "2026-09-22T20:28:23+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "test_coverage::src/benchmark/benchmark_chunked_io.cpp::untested_module": {
+      "original_id": "test_coverage::src/benchmark/benchmark_chunked_io.cpp::untested_module",
+      "original_detector": "test_coverage",
+      "original_file": "src/benchmark/benchmark_chunked_io.cpp",
+      "original_summary": "Untested module (262 LOC, 0 importers)",
+      "status": "superseded",
+      "superseded_at": "2026-09-22T20:28:23+00:00",
+      "remapped_to": null,
+      "candidates": []
+    },
+    "test_coverage::src/hardware/touch.h::untested_module": {
+      "original_id": "test_coverage::src/hardware/touch.h::untested_module",
+      "original_detector": "test_coverage",
+      "original_file": "src/hardware/touch.h",
+      "original_summary": "Untested module (10 LOC, 0 importers)",
+      "status": "superseded",
+      "superseded_at": "2026-09-22T20:28:23+00:00",
+      "remapped_to": null,
+      "candidates": []
+    }
+  },
+  "promoted_ids": [],
+  "plan_start_scores": {},
+  "refresh_state": {
+    "_subjective_migration_pruned": true,
+    "lifecycle_phase": "plan",
+    "subjective_review_completed_at_scan_count": 15,
+    "postflight_scan_completed_at_scan_count": 18
+  },
+  "execution_log": [
+    {
+      "timestamp": "2026-09-22T10:29:35+00:00",
+      "action": "sync_subjective",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-09-22T10:29:35+00:00",
+      "action": "auto_cluster",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-09-22T10:29:35+00:00",
+      "action": "sync_lifecycle_phase",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "phase": "review_initial"
+      }
+    },
+    {
+      "timestamp": "2026-09-22T10:29:35+00:00",
+      "action": "seed_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-09-22T10:31:24+00:00",
+      "action": "cluster_done",
+      "issue_ids": [],
+      "cluster_name": "auto/test_coverage-untested_module",
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "reason": "cluster members no longer actionable in state"
+      }
+    },
+    {
+      "timestamp": "2026-09-22T10:31:24+00:00",
+      "action": "reconcile",
+      "issue_ids": [
+        "test_coverage::src/app_types.h",
+        "test_coverage::src/benchmark.cpp",
+        "test_coverage::src/diagnostics.cpp",
+        "test_coverage::src/display_ui.cpp",
+        "test_coverage::src/display_ui.h",
+        "test_coverage::src/main.cpp",
+        "test_coverage::src/sd_card.cpp",
+        "test_coverage::src/sd_card.h",
+        "test_coverage::src/touch.cpp"
+      ],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "superseded_count": 9,
+        "pruned_count": 0,
+        "resurfaced_count": 0,
+        "clusters_completed_count": 1
+      }
+    },
+    {
+      "timestamp": "2026-09-22T10:31:24+00:00",
+      "action": "sync_subjective",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-09-22T10:31:24+00:00",
+      "action": "clear_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-09-22T10:31:24+00:00",
+      "action": "complete_postflight_scan",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "scan_count": 1
+      }
+    },
+    {
+      "timestamp": "2026-09-22T10:32:01+00:00",
+      "action": "sync_subjective",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-09-22T10:32:01+00:00",
+      "action": "auto_cluster",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-09-22T10:32:01+00:00",
+      "action": "seed_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-09-22T10:32:23+00:00",
+      "action": "sync_subjective",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-09-22T11:05:20+00:00",
+      "action": "skip",
+      "issue_ids": [
+        "orphaned::src/display_ui.cpp",
+        "orphaned::src/benchmark.cpp",
+        "orphaned::src/sd_card.cpp",
+        "orphaned::src/touch.cpp",
+        "orphaned::src/diagnostics.cpp",
+        "orphaned::src/bench_math.cpp",
+        "orphaned::src/card_format.cpp",
+        "orphaned::src/card_identity.cpp",
+        "orphaned::src/touch_calibration.cpp",
+        "orphaned::src/ui_geometry.cpp",
+        "orphaned::src/display_results.cpp",
+        "orphaned::src/display_diagnostics.cpp",
+        "orphaned::src/spi_scale_benchmark.cpp",
+        "orphaned::src/display_progress.cpp",
+        "orphaned::src/benchmark_raw.cpp",
+        "orphaned::src/display_ui_internal.cpp"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": null,
+      "detail": {
+        "kind": "false_positive",
+        "reason": null
+      }
+    },
+    {
+      "timestamp": "2026-09-22T11:11:57+00:00",
+      "action": "skip",
+      "issue_ids": [
+        "stale_exclude::.pio::.pio",
+        "stale_exclude::.vscode::.vscode"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": null,
+      "detail": {
+        "kind": "false_positive",
+        "reason": null
+      }
+    },
+    {
+      "timestamp": "2026-09-22T11:13:16+00:00",
+      "action": "skip",
+      "issue_ids": [
+        "test_coverage::src/sd_card.h::untested_module",
+        "test_coverage::src/diagnostics.cpp::untested_module",
+        "test_coverage::src/touch.cpp::untested_module",
+        "test_coverage::src/benchmark.cpp::untested_module",
+        "test_coverage::src/main.cpp::untested_module",
+        "test_coverage::src/display_ui.cpp::untested_module",
+        "test_coverage::src/sd_card.cpp::untested_module",
+        "test_coverage::src/display_ui.h::untested_module",
+        "test_coverage::src/display_diagnostics.cpp::untested_module",
+        "test_coverage::src/spi_scale_benchmark.cpp::untested_module",
+        "test_coverage::src/display_results.cpp::untested_module",
+        "test_coverage::src/benchmark_internal.h::untested_module",
+        "test_coverage::src/benchmark_raw.cpp::untested_module",
+        "test_coverage::src/display_ui_internal.h::untested_module",
+        "test_coverage::src/display_ui_internal.cpp::untested_module",
+        "test_coverage::src/display_progress.cpp::untested_module"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (sd_card.cpp, benchmark.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, touch.cpp, display_ui*.cpp, diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (sd_card.h, display_ui.h, benchmark_internal.h, touch.h, diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) has already been extracted into bench_math/card_format/card_identity/touch_calibration/ui_geometry and is covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "detail": {
+        "kind": "permanent",
+        "reason": null
+      }
+    },
+    {
+      "timestamp": "2026-09-22T11:22:23+00:00",
+      "action": "cluster_done",
+      "issue_ids": [],
+      "cluster_name": "auto/stale_exclude",
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "reason": "cluster members no longer actionable in state"
+      }
+    },
+    {
+      "timestamp": "2026-09-22T11:22:23+00:00",
+      "action": "reconcile",
+      "issue_ids": [
+        "stale_exclude::.pio::.pio",
+        "stale_exclude::.vscode::.vscode"
+      ],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "superseded_count": 2,
+        "pruned_count": 0,
+        "resurfaced_count": 0,
+        "clusters_completed_count": 1
+      }
+    },
+    {
+      "timestamp": "2026-09-22T11:22:45+00:00",
+      "action": "skip",
+      "issue_ids": [
+        "orphaned::src/benchmark/benchmark.cpp",
+        "orphaned::src/hardware/sd_card.cpp",
+        "orphaned::src/ui/display_results.cpp",
+        "orphaned::src/ui/display_ui.cpp",
+        "orphaned::src/ui/display_diagnostics.cpp",
+        "orphaned::src/benchmark/spi_scale_benchmark.cpp",
+        "orphaned::src/ui/display_progress.cpp",
+        "orphaned::src/benchmark/benchmark_raw.cpp",
+        "orphaned::src/benchmark/bench_math.cpp",
+        "orphaned::src/hardware/touch.cpp",
+        "orphaned::src/ui/display_ui_internal.cpp",
+        "orphaned::src/util/card_format.cpp",
+        "orphaned::src/util/touch_calibration.cpp",
+        "orphaned::src/util/card_identity.cpp",
+        "orphaned::src/ui/ui_geometry.cpp",
+        "orphaned::src/ui/diagnostics.cpp"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": null,
+      "detail": {
+        "kind": "false_positive",
+        "reason": null
+      }
+    },
+    {
+      "timestamp": "2026-09-22T11:23:24+00:00",
+      "action": "skip",
+      "issue_ids": [
+        "test_coverage::src/ui/display_diagnostics.cpp::untested_module",
+        "test_coverage::src/benchmark/benchmark.cpp::untested_module",
+        "test_coverage::src/ui/display_progress.cpp::untested_module",
+        "test_coverage::src/hardware/touch.cpp::untested_module",
+        "test_coverage::src/ui/diagnostics.cpp::untested_module",
+        "test_coverage::src/hardware/sd_card.cpp::untested_module",
+        "test_coverage::src/ui/display_ui_internal.cpp::untested_module",
+        "test_coverage::src/ui/display_results.cpp::untested_module",
+        "test_coverage::src/benchmark/benchmark_internal.h::untested_module",
+        "test_coverage::src/benchmark/spi_scale_benchmark.cpp::untested_module",
+        "test_coverage::src/benchmark/benchmark_raw.cpp::untested_module",
+        "test_coverage::src/ui/display_ui_internal.h::untested_module",
+        "test_coverage::src/ui/display_ui.h::untested_module",
+        "test_coverage::src/ui/display_ui.cpp::untested_module",
+        "test_coverage::src/hardware/sd_card.h::untested_module"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "Remaining untested files are either (a) hardware-coupled glue that drives real SD/SPI/TFT/touch hardware (hardware/sd_card.cpp, benchmark/benchmark.cpp, benchmark/benchmark_raw.cpp, benchmark/spi_scale_benchmark.cpp, hardware/touch.cpp, ui/display_ui*.cpp, ui/diagnostics.cpp, main.cpp) and would need a full mock Arduino/SdFat/TFT_eSPI hardware abstraction layer to test meaningfully -- a large investment not justified for this hobby firmware today -- or (b) headers containing only function declarations with no logic of their own (hardware/sd_card.h, ui/display_ui.h, benchmark/benchmark_internal.h, hardware/touch.h, ui/diagnostics.h) where a 'test' would be vacuous. All genuinely testable pure logic (formatting, identity/vendor lookup, CRC/throughput/efficiency math, touch calibration, UI geometry, and app_types default-value invariants) is extracted into benchmark/bench_math, util/card_format, util/card_identity, util/touch_calibration, ui/ui_geometry and covered by real host-native unit tests under test/, run via 'pio test -e native'.",
+      "detail": {
+        "kind": "permanent",
+        "reason": null
+      }
+    },
+    {
+      "timestamp": "2026-09-22T11:25:10+00:00",
+      "action": "skip",
+      "issue_ids": [
+        "stale_exclude::.pio::.pio",
+        "stale_exclude::.vscode::.vscode"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": null,
+      "detail": {
+        "kind": "false_positive",
+        "reason": null
+      }
+    },
+    {
+      "timestamp": "2026-09-22T11:25:46+00:00",
+      "action": "reconcile",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "superseded_count": 0,
+        "pruned_count": 0,
+        "resurfaced_count": 0,
+        "clusters_completed_count": 0
+      }
+    },
+    {
+      "timestamp": "2026-09-22T11:43:47+00:00",
+      "action": "sync_subjective",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-09-22T11:43:47+00:00",
+      "action": "review_import_sync",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "trigger": "review_import",
+        "new_ids": [
+          "review::.::holistic::abstraction_fitness::diagnostics_screen_single_caller_wrapper",
+          "review::.::holistic::ai_generated_debt::duplicated_error_recording_boilerplate",
+          "review::.::holistic::ai_generated_debt::touch_debug_logging_left_in",
+          "review::.::holistic::api_surface_coherence::sd_scan_result_shape_asymmetry",
+          "review::.::holistic::contract_coherence::spi_scale_benchmark_hidden_rescan",
+          "review::.::holistic::convention_outlier::touch_calibration_namespace_outlier",
+          "review::.::holistic::convention_outlier::touch_module_formatting_island",
+          "review::.::holistic::dependency_health::unpinned_lib_deps_versions",
+          "review::.::holistic::design_coherence::benchmark_loop_triplication",
+          "review::.::holistic::design_coherence::quick_benchmark_mixes_orchestration_and_reporting",
+          "review::.::holistic::design_coherence::speed_qualification_loop_duplicated_across_files",
+          "review::.::holistic::error_consistency::duplicated_dma_alloc_error_handling",
+          "review::.::holistic::error_consistency::volume_mount_failure_no_error_code",
+          "review::.::holistic::high_level_elegance::wait_for_tap_misplaced",
+          "review::.::holistic::initialization_coupling::raw_read_missing_card_null_check",
+          "review::.::holistic::initialization_coupling::sd_state_restore_by_convention",
+          "review::.::holistic::low_level_elegance::benchmark_duplicated_chunked_loops",
+          "review::.::holistic::low_level_elegance::spi_scale_result_monolithic_render",
+          "review::.::holistic::low_level_elegance::split_statement_formatting_convention",
+          "review::.::holistic::mid_level_elegance::hidden_rescan_side_effect_in_spi_scaling",
+          "review::.::holistic::mid_level_elegance::transitive_util_includes_via_sd_card_header",
+          "review::.::holistic::naming_quality::diagnostics_screen_name_collision",
+          "review::.::holistic::naming_quality::print_card_identity_scope_mismatch",
+          "review::.::holistic::package_organization::util_dir_hardware_affinity_mismatch",
+          "review::.::holistic::test_strategy::no_ci_for_native_tests",
+          "review::.::holistic::test_strategy::stale_claude_md_no_tests_claim",
+          "review::.::holistic::type_safety::fsname_magic_number_fs_types",
+          "review::.::holistic::type_safety::stray_static_cast_amid_c_style_casts"
+        ],
+        "added_to_queue": [
+          "review::.::holistic::abstraction_fitness::diagnostics_screen_single_caller_wrapper",
+          "review::.::holistic::ai_generated_debt::duplicated_error_recording_boilerplate",
+          "review::.::holistic::ai_generated_debt::touch_debug_logging_left_in",
+          "review::.::holistic::api_surface_coherence::sd_scan_result_shape_asymmetry",
+          "review::.::holistic::contract_coherence::spi_scale_benchmark_hidden_rescan",
+          "review::.::holistic::convention_outlier::touch_calibration_namespace_outlier",
+          "review::.::holistic::convention_outlier::touch_module_formatting_island",
+          "review::.::holistic::dependency_health::unpinned_lib_deps_versions",
+          "review::.::holistic::design_coherence::benchmark_loop_triplication",
+          "review::.::holistic::design_coherence::quick_benchmark_mixes_orchestration_and_reporting",
+          "review::.::holistic::design_coherence::speed_qualification_loop_duplicated_across_files",
+          "review::.::holistic::error_consistency::duplicated_dma_alloc_error_handling",
+          "review::.::holistic::error_consistency::volume_mount_failure_no_error_code",
+          "review::.::holistic::high_level_elegance::wait_for_tap_misplaced",
+          "review::.::holistic::initialization_coupling::raw_read_missing_card_null_check",
+          "review::.::holistic::initialization_coupling::sd_state_restore_by_convention",
+          "review::.::holistic::low_level_elegance::benchmark_duplicated_chunked_loops",
+          "review::.::holistic::low_level_elegance::spi_scale_result_monolithic_render",
+          "review::.::holistic::low_level_elegance::split_statement_formatting_convention",
+          "review::.::holistic::mid_level_elegance::hidden_rescan_side_effect_in_spi_scaling",
+          "review::.::holistic::mid_level_elegance::transitive_util_includes_via_sd_card_header",
+          "review::.::holistic::naming_quality::diagnostics_screen_name_collision",
+          "review::.::holistic::naming_quality::print_card_identity_scope_mismatch",
+          "review::.::holistic::package_organization::util_dir_hardware_affinity_mismatch",
+          "review::.::holistic::test_strategy::no_ci_for_native_tests",
+          "review::.::holistic::test_strategy::stale_claude_md_no_tests_claim",
+          "review::.::holistic::type_safety::fsname_magic_number_fs_types",
+          "review::.::holistic::type_safety::stray_static_cast_amid_c_style_casts"
+        ],
+        "workflow_injected_ids": [],
+        "triage_injected": false,
+        "triage_injected_ids": [],
+        "triage_deferred": false,
+        "diff_new": 28,
+        "diff_reopened": 0,
+        "diff_auto_resolved": 63,
+        "stale_pruned_from_queue": [],
+        "covered_subjective_pruned_from_queue": [],
+        "covered_subjective": [
+          "subjective::abstraction_fitness",
+          "subjective::ai_generated_debt",
+          "subjective::api_surface_coherence",
+          "subjective::authorization_consistency",
+          "subjective::contract_coherence",
+          "subjective::convention_outlier",
+          "subjective::cross_module_architecture",
+          "subjective::dependency_health",
+          "subjective::design_coherence",
+          "subjective::error_consistency",
+          "subjective::high_level_elegance",
+          "subjective::incomplete_migration",
+          "subjective::initialization_coupling",
+          "subjective::logic_clarity",
+          "subjective::low_level_elegance",
+          "subjective::mid_level_elegance",
+          "subjective::naming_quality",
+          "subjective::package_organization",
+          "subjective::test_strategy",
+          "subjective::type_safety"
+        ],
+        "stale_sync_injected": [
+          "subjective::ai_generated_debt",
+          "subjective::design_coherence",
+          "subjective::low_level_elegance",
+          "subjective::mid_level_elegance",
+          "subjective::package_organization",
+          "subjective::test_strategy"
+        ],
+        "stale_sync_pruned": [],
+        "auto_cluster_changes": 0,
+        "import_scores_injected": [],
+        "import_scores_pruned": [],
+        "sync_status": "synced",
+        "sync_message": null
+      }
+    },
+    {
+      "timestamp": "2026-09-22T15:07:27+00:00",
+      "action": "done",
+      "issue_ids": [
+        "review::.::holistic::ai_generated_debt::duplicated_error_recording_boilerplate",
+        "review::.::holistic::error_consistency::duplicated_dma_alloc_error_handling"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "Extracted shared recordSdError() and allocateDmaBuffer() into hardware/sd_card.h/.cpp, used by scanCard(), runSpiScalingBenchmark(), and benchmark_raw.cpp instead of each duplicating the read-error-code/log or heap_caps_malloc pattern.",
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-09-22T15:07:58+00:00",
+      "action": "done",
+      "issue_ids": [
+        "review::.::holistic::abstraction_fitness::diagnostics_screen_single_caller_wrapper",
+        "review::.::holistic::ai_generated_debt::duplicated_error_recording_boilerplate",
+        "review::.::holistic::ai_generated_debt::touch_debug_logging_left_in",
+        "review::.::holistic::api_surface_coherence::sd_scan_result_shape_asymmetry",
+        "review::.::holistic::contract_coherence::spi_scale_benchmark_hidden_rescan",
+        "review::.::holistic::convention_outlier::touch_calibration_namespace_outlier",
+        "review::.::holistic::convention_outlier::touch_module_formatting_island",
+        "review::.::holistic::dependency_health::unpinned_lib_deps_versions",
+        "review::.::holistic::design_coherence::benchmark_loop_triplication",
+        "review::.::holistic::design_coherence::quick_benchmark_mixes_orchestration_and_reporting"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "Batch 1/3 of review-finding fixes: inlined diagnostics.cpp's single-caller glue into main.cpp (matching rescan()/runBenchMenu()); extracted shared recordSdError() into hardware/sd_card.h/.cpp; removed unconditional debug Serial.printf calls from touch.cpp's readTouch(); documented the scanCard()-vs-runSpiScalingBenchmark() return-shape difference as intentional (persistent queryable state vs one-shot result) in sd_card.h; documented runSpiScalingBenchmark()'s rescan side effect on its declaration in benchmark.h; changed touch_calibration.cpp's anonymous namespace to static (matching codebase convention); reformatted touch.h/touch.cpp from compact to the dominant one-arg-per-line style; pinned TFT_eSPI@2.5.43 and SdFat@2.3.1 in platformio.ini; extracted a shared runChunkedIo() helper replacing the triplicated write/read/verify loops in benchmark.cpp; extracted printBenchmarkResult() out of runQuickBenchmark().",
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-09-22T15:07:58+00:00",
+      "action": "resolve",
+      "issue_ids": [
+        "review::.::holistic::abstraction_fitness::diagnostics_screen_single_caller_wrapper",
+        "review::.::holistic::ai_generated_debt::duplicated_error_recording_boilerplate",
+        "review::.::holistic::ai_generated_debt::touch_debug_logging_left_in",
+        "review::.::holistic::api_surface_coherence::sd_scan_result_shape_asymmetry",
+        "review::.::holistic::contract_coherence::spi_scale_benchmark_hidden_rescan",
+        "review::.::holistic::convention_outlier::touch_calibration_namespace_outlier",
+        "review::.::holistic::convention_outlier::touch_module_formatting_island",
+        "review::.::holistic::dependency_health::unpinned_lib_deps_versions",
+        "review::.::holistic::design_coherence::benchmark_loop_triplication",
+        "review::.::holistic::design_coherence::quick_benchmark_mixes_orchestration_and_reporting"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "Batch 1/3 of review-finding fixes: inlined diagnostics.cpp's single-caller glue into main.cpp (matching rescan()/runBenchMenu()); extracted shared recordSdError() into hardware/sd_card.h/.cpp; removed unconditional debug Serial.printf calls from touch.cpp's readTouch(); documented the scanCard()-vs-runSpiScalingBenchmark() return-shape difference as intentional (persistent queryable state vs one-shot result) in sd_card.h; documented runSpiScalingBenchmark()'s rescan side effect on its declaration in benchmark.h; changed touch_calibration.cpp's anonymous namespace to static (matching codebase convention); reformatted touch.h/touch.cpp from compact to the dominant one-arg-per-line style; pinned TFT_eSPI@2.5.43 and SdFat@2.3.1 in platformio.ini; extracted a shared runChunkedIo() helper replacing the triplicated write/read/verify loops in benchmark.cpp; extracted printBenchmarkResult() out of runQuickBenchmark().",
+      "detail": {
+        "status": "fixed",
+        "attestation": "I have actually Batch 1/3 of review-finding fixes: inlined diagnostics.cpp's single-caller glue into main.cpp (matching rescan()/runBenchMenu()); extracted shared recordSdError() into hardware/sd_card.h/.cpp; removed unconditional debug Serial.printf calls from touch.cpp's readTouch(); documented the scanCard()-vs-runSpiScalingBenchmark() return-shape difference as intentional (persistent queryable state vs one-shot result) in sd_card.h; documented runSpiScalingBenchmark()'s rescan side effect on its declaration in benchmark.h; changed touch_calibration.cpp's anonymous namespace to static (matching codebase convention); reformatted touch.h/touch.cpp from compact to the dominant one-arg-per-line style; pinned TFT_eSPI@2.5.43 and SdFat@2.3.1 in platformio.ini; extracted a shared runChunkedIo() helper replacing the triplicated write/read/verify loops in benchmark.cpp; extracted printBenchmarkResult() out of runQuickBenchmark(). and I am not gaming the score."
+      }
+    },
+    {
+      "timestamp": "2026-09-22T15:08:14+00:00",
+      "action": "done",
+      "issue_ids": [
+        "review::.::holistic::error_consistency::duplicated_dma_alloc_error_handling",
+        "review::.::holistic::error_consistency::volume_mount_failure_no_error_code",
+        "review::.::holistic::high_level_elegance::wait_for_tap_misplaced",
+        "review::.::holistic::initialization_coupling::raw_read_missing_card_null_check",
+        "review::.::holistic::initialization_coupling::sd_state_restore_by_convention",
+        "review::.::holistic::low_level_elegance::benchmark_duplicated_chunked_loops",
+        "review::.::holistic::low_level_elegance::spi_scale_result_monolithic_render",
+        "review::.::holistic::low_level_elegance::split_statement_formatting_convention",
+        "review::.::holistic::mid_level_elegance::hidden_rescan_side_effect_in_spi_scaling",
+        "review::.::holistic::mid_level_elegance::transitive_util_includes_via_sd_card_header"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "Batch 2/3: moved allocateDmaBuffer() into hardware/sd_card.h/.cpp so sd_card.cpp and benchmark_raw.cpp share one implementation instead of duplicating it; added CardInfo::volumeErrorCode/volumeErrorData, populated via recordSdError() on sd.volumeBegin() failure; moved uiWaitForTap()'s definition into display_ui_internal.cpp next to header()/lineRow(); added a sd.card() null check at the top of rawReadAtCurrentSpeed(); strengthened the scanCard()-restores-state doc comment on runSpiScalingBenchmark() in benchmark.h; extracted runChunkedIo() to remove the timedFileWrite/timedFileRead/verifyFile triplication; split uiShowSpiScaleResult() into scaleGraphMaxSpeed()/drawScaleGraphFrame()/scalePointCoords()/drawScalePoint()/buildScaleSummary() helpers; reformatted touch.cpp and tightened bench_math.cpp's one compact expression to the dominant vertical style; documented runSpiScalingBenchmark()'s hidden rescan on its declaration in benchmark.h; added explicit '../hardware/card_format.h' and '../hardware/card_identity.h' includes to every ui/ and benchmark/ file that calls those functions, instead of relying on sd_card.h's transitive include.",
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-09-22T15:08:15+00:00",
+      "action": "resolve",
+      "issue_ids": [
+        "review::.::holistic::error_consistency::duplicated_dma_alloc_error_handling",
+        "review::.::holistic::error_consistency::volume_mount_failure_no_error_code",
+        "review::.::holistic::high_level_elegance::wait_for_tap_misplaced",
+        "review::.::holistic::initialization_coupling::raw_read_missing_card_null_check",
+        "review::.::holistic::initialization_coupling::sd_state_restore_by_convention",
+        "review::.::holistic::low_level_elegance::benchmark_duplicated_chunked_loops",
+        "review::.::holistic::low_level_elegance::spi_scale_result_monolithic_render",
+        "review::.::holistic::low_level_elegance::split_statement_formatting_convention",
+        "review::.::holistic::mid_level_elegance::hidden_rescan_side_effect_in_spi_scaling",
+        "review::.::holistic::mid_level_elegance::transitive_util_includes_via_sd_card_header"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "Batch 2/3: moved allocateDmaBuffer() into hardware/sd_card.h/.cpp so sd_card.cpp and benchmark_raw.cpp share one implementation instead of duplicating it; added CardInfo::volumeErrorCode/volumeErrorData, populated via recordSdError() on sd.volumeBegin() failure; moved uiWaitForTap()'s definition into display_ui_internal.cpp next to header()/lineRow(); added a sd.card() null check at the top of rawReadAtCurrentSpeed(); strengthened the scanCard()-restores-state doc comment on runSpiScalingBenchmark() in benchmark.h; extracted runChunkedIo() to remove the timedFileWrite/timedFileRead/verifyFile triplication; split uiShowSpiScaleResult() into scaleGraphMaxSpeed()/drawScaleGraphFrame()/scalePointCoords()/drawScalePoint()/buildScaleSummary() helpers; reformatted touch.cpp and tightened bench_math.cpp's one compact expression to the dominant vertical style; documented runSpiScalingBenchmark()'s hidden rescan on its declaration in benchmark.h; added explicit '../hardware/card_format.h' and '../hardware/card_identity.h' includes to every ui/ and benchmark/ file that calls those functions, instead of relying on sd_card.h's transitive include.",
+      "detail": {
+        "status": "fixed",
+        "attestation": "I have actually Batch 2/3: moved allocateDmaBuffer() into hardware/sd_card.h/.cpp so sd_card.cpp and benchmark_raw.cpp share one implementation instead of duplicating it; added CardInfo::volumeErrorCode/volumeErrorData, populated via recordSdError() on sd.volumeBegin() failure; moved uiWaitForTap()'s definition into display_ui_internal.cpp next to header()/lineRow(); added a sd.card() null check at the top of rawReadAtCurrentSpeed(); strengthened the scanCard()-restores-state doc comment on runSpiScalingBenchmark() in benchmark.h; extracted runChunkedIo() to remove the timedFileWrite/timedFileRead/verifyFile triplication; split uiShowSpiScaleResult() into scaleGraphMaxSpeed()/drawScaleGraphFrame()/scalePointCoords()/drawScalePoint()/buildScaleSummary() helpers; reformatted touch.cpp and tightened bench_math.cpp's one compact expression to the dominant vertical style; documented runSpiScalingBenchmark()'s hidden rescan on its declaration in benchmark.h; added explicit '../hardware/card_format.h' and '../hardware/card_identity.h' includes to every ui/ and benchmark/ file that calls those functions, instead of relying on sd_card.h's transitive include. and I am not gaming the score."
+      }
+    },
+    {
+      "timestamp": "2026-09-22T15:08:30+00:00",
+      "action": "done",
+      "issue_ids": [
+        "review::.::holistic::naming_quality::diagnostics_screen_name_collision",
+        "review::.::holistic::naming_quality::print_card_identity_scope_mismatch",
+        "review::.::holistic::package_organization::util_dir_hardware_affinity_mismatch",
+        "review::.::holistic::test_strategy::no_ci_for_native_tests",
+        "review::.::holistic::test_strategy::stale_claude_md_no_tests_claim",
+        "review::.::holistic::type_safety::fsname_magic_number_fs_types",
+        "review::.::holistic::type_safety::stray_static_cast_amid_c_style_casts"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "Batch 3/3: resolved the showDiagnosticsScreen()/uiShowDiagnostics() naming collision by inlining the wrapper into main.cpp as showDiagnostics() (see the abstraction_fitness fix); renamed printCardIdentity() to printCardReport() to match its actual scope; moved card_format.*/card_identity.*/touch_calibration.* from util/ into hardware/ (their only consumers), eliminating the util/ directory entirely; added .github/workflows/native-tests.yml running 'pio test -e native' on push/PR; rewrote CLAUDE.md's Build commands section to document the real env:native Unity suite and its six covered modules; moved fsName() into hardware/sd_card.cpp using SdFat's FAT_TYPE_FAT12/16/32/EXFAT constants instead of raw literals (same reasoning as cardTypeName()); changed the one stray static_cast in card_format.cpp to a C-style cast to match the codebase's universal convention.",
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-09-22T15:08:30+00:00",
+      "action": "resolve",
+      "issue_ids": [
+        "review::.::holistic::naming_quality::diagnostics_screen_name_collision",
+        "review::.::holistic::naming_quality::print_card_identity_scope_mismatch",
+        "review::.::holistic::package_organization::util_dir_hardware_affinity_mismatch",
+        "review::.::holistic::test_strategy::no_ci_for_native_tests",
+        "review::.::holistic::test_strategy::stale_claude_md_no_tests_claim",
+        "review::.::holistic::type_safety::fsname_magic_number_fs_types",
+        "review::.::holistic::type_safety::stray_static_cast_amid_c_style_casts"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "Batch 3/3: resolved the showDiagnosticsScreen()/uiShowDiagnostics() naming collision by inlining the wrapper into main.cpp as showDiagnostics() (see the abstraction_fitness fix); renamed printCardIdentity() to printCardReport() to match its actual scope; moved card_format.*/card_identity.*/touch_calibration.* from util/ into hardware/ (their only consumers), eliminating the util/ directory entirely; added .github/workflows/native-tests.yml running 'pio test -e native' on push/PR; rewrote CLAUDE.md's Build commands section to document the real env:native Unity suite and its six covered modules; moved fsName() into hardware/sd_card.cpp using SdFat's FAT_TYPE_FAT12/16/32/EXFAT constants instead of raw literals (same reasoning as cardTypeName()); changed the one stray static_cast in card_format.cpp to a C-style cast to match the codebase's universal convention.",
+      "detail": {
+        "status": "fixed",
+        "attestation": "I have actually Batch 3/3: resolved the showDiagnosticsScreen()/uiShowDiagnostics() naming collision by inlining the wrapper into main.cpp as showDiagnostics() (see the abstraction_fitness fix); renamed printCardIdentity() to printCardReport() to match its actual scope; moved card_format.*/card_identity.*/touch_calibration.* from util/ into hardware/ (their only consumers), eliminating the util/ directory entirely; added .github/workflows/native-tests.yml running 'pio test -e native' on push/PR; rewrote CLAUDE.md's Build commands section to document the real env:native Unity suite and its six covered modules; moved fsName() into hardware/sd_card.cpp using SdFat's FAT_TYPE_FAT12/16/32/EXFAT constants instead of raw literals (same reasoning as cardTypeName()); changed the one stray static_cast in card_format.cpp to a C-style cast to match the codebase's universal convention. and I am not gaming the score."
+      }
+    },
+    {
+      "timestamp": "2026-09-22T15:09:00+00:00",
+      "action": "skip",
+      "issue_ids": [
+        "review::.::holistic::design_coherence::speed_qualification_loop_duplicated_across_files"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "Reviewer's own assessment: 'with only two call sites the duplication is tolerable as-is; if a third speed-iterating routine is added, factor the shared scaffold into one helper.' Accepting as documented debt rather than introducing a premature abstraction for two call sites.",
+      "detail": {
+        "kind": "permanent",
+        "reason": null
+      }
+    },
+    {
+      "timestamp": "2026-09-22T15:35:36+00:00",
+      "action": "sync_subjective",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-09-22T15:35:36+00:00",
+      "action": "review_import_sync",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "trigger": "review_import",
+        "new_ids": [
+          "review::.::holistic::contract_coherence::benchmark_h_doc_asymmetry",
+          "review::.::holistic::contract_coherence::write_only_status_fields",
+          "review::.::holistic::convention_outlier::card_identity_and_header_decl_def_mismatch",
+          "review::.::holistic::convention_outlier::compact_signature_style_island",
+          "review::.::holistic::cross_module_architecture::benchmark_calls_ui_directly",
+          "review::.::holistic::error_consistency::benchmark_result_no_error_capture",
+          "review::.::holistic::error_consistency::raw_read_bypasses_recordsderror",
+          "review::.::holistic::error_consistency::silent_file_open_failure",
+          "review::.::holistic::high_level_elegance::claudemd_stale_diagnostics_module",
+          "review::.::holistic::logic_clarity::csd_ok_dead_state",
+          "review::.::holistic::logic_clarity::unused_raw_test_sectors_constant",
+          "review::.::holistic::naming_quality::touch_sx_sy_abbreviation",
+          "review::.::holistic::package_organization::benchmark_depends_on_ui",
+          "review::.::holistic::test_strategy::untested_pure_logic_in_display_results",
+          "review::.::holistic::type_safety::void_star_context_callback"
+        ],
+        "added_to_queue": [
+          "review::.::holistic::contract_coherence::benchmark_h_doc_asymmetry",
+          "review::.::holistic::contract_coherence::write_only_status_fields",
+          "review::.::holistic::convention_outlier::card_identity_and_header_decl_def_mismatch",
+          "review::.::holistic::convention_outlier::compact_signature_style_island",
+          "review::.::holistic::cross_module_architecture::benchmark_calls_ui_directly",
+          "review::.::holistic::error_consistency::benchmark_result_no_error_capture",
+          "review::.::holistic::error_consistency::raw_read_bypasses_recordsderror",
+          "review::.::holistic::error_consistency::silent_file_open_failure",
+          "review::.::holistic::high_level_elegance::claudemd_stale_diagnostics_module",
+          "review::.::holistic::logic_clarity::csd_ok_dead_state",
+          "review::.::holistic::logic_clarity::unused_raw_test_sectors_constant",
+          "review::.::holistic::naming_quality::touch_sx_sy_abbreviation",
+          "review::.::holistic::package_organization::benchmark_depends_on_ui",
+          "review::.::holistic::test_strategy::untested_pure_logic_in_display_results",
+          "review::.::holistic::type_safety::void_star_context_callback"
+        ],
+        "workflow_injected_ids": [],
+        "triage_injected": false,
+        "triage_injected_ids": [],
+        "triage_deferred": false,
+        "diff_new": 15,
+        "diff_reopened": 0,
+        "diff_auto_resolved": 63,
+        "stale_pruned_from_queue": [],
+        "covered_subjective_pruned_from_queue": [
+          "subjective::design_coherence",
+          "subjective::ai_generated_debt",
+          "subjective::low_level_elegance",
+          "subjective::mid_level_elegance",
+          "subjective::package_organization",
+          "subjective::test_strategy"
+        ],
+        "covered_subjective": [
+          "subjective::abstraction_fitness",
+          "subjective::ai_generated_debt",
+          "subjective::api_surface_coherence",
+          "subjective::authorization_consistency",
+          "subjective::contract_coherence",
+          "subjective::convention_outlier",
+          "subjective::cross_module_architecture",
+          "subjective::dependency_health",
+          "subjective::design_coherence",
+          "subjective::error_consistency",
+          "subjective::high_level_elegance",
+          "subjective::incomplete_migration",
+          "subjective::initialization_coupling",
+          "subjective::logic_clarity",
+          "subjective::low_level_elegance",
+          "subjective::mid_level_elegance",
+          "subjective::naming_quality",
+          "subjective::package_organization",
+          "subjective::test_strategy",
+          "subjective::type_safety"
+        ],
+        "stale_sync_injected": [
+          "subjective::error_consistency"
+        ],
+        "stale_sync_pruned": [],
+        "auto_cluster_changes": 0,
+        "import_scores_injected": [],
+        "import_scores_pruned": [],
+        "sync_status": "synced",
+        "sync_message": null
+      }
+    },
+    {
+      "timestamp": "2026-09-22T15:41:01+00:00",
+      "action": "done",
+      "issue_ids": [
+        "review::.::holistic::contract_coherence::benchmark_h_doc_asymmetry",
+        "review::.::holistic::contract_coherence::write_only_status_fields",
+        "review::.::holistic::convention_outlier::card_identity_and_header_decl_def_mismatch",
+        "review::.::holistic::convention_outlier::compact_signature_style_island",
+        "review::.::holistic::cross_module_architecture::benchmark_calls_ui_directly",
+        "review::.::holistic::error_consistency::benchmark_result_no_error_capture",
+        "review::.::holistic::error_consistency::raw_read_bypasses_recordsderror",
+        "review::.::holistic::error_consistency::silent_file_open_failure",
+        "review::.::holistic::high_level_elegance::claudemd_stale_diagnostics_module",
+        "review::.::holistic::logic_clarity::csd_ok_dead_state",
+        "review::.::holistic::logic_clarity::unused_raw_test_sectors_constant",
+        "review::.::holistic::naming_quality::touch_sx_sy_abbreviation",
+        "review::.::holistic::package_organization::benchmark_depends_on_ui",
+        "review::.::holistic::test_strategy::untested_pure_logic_in_display_results",
+        "review::.::holistic::type_safety::void_star_context_callback"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "Documented runQuickBenchmark()'s no-side-effect/default-result contract in benchmark.h; surfaced BenchmarkResult.cleanupOk in printBenchmarkResult and removed dead CardInfo::csdOk (with its test assertion); confirmed identityCheckName()/header() defs already matched their headers (stale finding from before a mid-review fix landed); split makeSdConfig(uint32_t hz) in sd_card.h/.cpp to one-arg-per-line (the remaining compact holdout); added a BenchmarkProgressFn callback threaded through runChunkedIo()/timedFileWrite/timedFileRead/verifyFile/runQuickBenchmark so benchmark.cpp no longer includes ui/display_ui.h, with main.cpp passing uiShowProgress as the callback; added CardInfo-style ioErrorCode/ioErrorData to BenchmarkResult, populated via recordSdError() on any chunk-transfer failure and on sd.open() failure, and printed in printBenchmarkResult(); switched rawReadAtCurrentSpeed() to call the shared recordSdError() with a formatted 'RAW READ LBA %lu' label instead of its own inline Serial.printf; updated CLAUDE.md's Architecture section to describe main.cpp's inlined showDiagnostics() instead of the removed diagnostics.* module; removed the unused RAW_TEST_SECTORS constant from config.h; renamed touch.h/touch.cpp's readTouch() sx/sy params to screenX/screenY matching mapTouchToScreen()'s naming; moved scaleGraphMaxSpeed()/scalePointCoords()/buildScaleSummary() from display_results.cpp into ui_geometry.h/.cpp (now in the native test_build_src_filter) with 9 new Unity tests covering edge cases (single-point graphs, failed/zero-speed points, first-successful-point summary); retyped ChunkIoFn's void* context to a concrete uint32_t* crcAccum since only chunkReadAndCrc ever used it.",
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-09-22T15:41:01+00:00",
+      "action": "resolve",
+      "issue_ids": [
+        "review::.::holistic::contract_coherence::benchmark_h_doc_asymmetry",
+        "review::.::holistic::contract_coherence::write_only_status_fields",
+        "review::.::holistic::convention_outlier::card_identity_and_header_decl_def_mismatch",
+        "review::.::holistic::convention_outlier::compact_signature_style_island",
+        "review::.::holistic::cross_module_architecture::benchmark_calls_ui_directly",
+        "review::.::holistic::error_consistency::benchmark_result_no_error_capture",
+        "review::.::holistic::error_consistency::raw_read_bypasses_recordsderror",
+        "review::.::holistic::error_consistency::silent_file_open_failure",
+        "review::.::holistic::high_level_elegance::claudemd_stale_diagnostics_module",
+        "review::.::holistic::logic_clarity::csd_ok_dead_state",
+        "review::.::holistic::logic_clarity::unused_raw_test_sectors_constant",
+        "review::.::holistic::naming_quality::touch_sx_sy_abbreviation",
+        "review::.::holistic::package_organization::benchmark_depends_on_ui",
+        "review::.::holistic::test_strategy::untested_pure_logic_in_display_results",
+        "review::.::holistic::type_safety::void_star_context_callback"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "Documented runQuickBenchmark()'s no-side-effect/default-result contract in benchmark.h; surfaced BenchmarkResult.cleanupOk in printBenchmarkResult and removed dead CardInfo::csdOk (with its test assertion); confirmed identityCheckName()/header() defs already matched their headers (stale finding from before a mid-review fix landed); split makeSdConfig(uint32_t hz) in sd_card.h/.cpp to one-arg-per-line (the remaining compact holdout); added a BenchmarkProgressFn callback threaded through runChunkedIo()/timedFileWrite/timedFileRead/verifyFile/runQuickBenchmark so benchmark.cpp no longer includes ui/display_ui.h, with main.cpp passing uiShowProgress as the callback; added CardInfo-style ioErrorCode/ioErrorData to BenchmarkResult, populated via recordSdError() on any chunk-transfer failure and on sd.open() failure, and printed in printBenchmarkResult(); switched rawReadAtCurrentSpeed() to call the shared recordSdError() with a formatted 'RAW READ LBA %lu' label instead of its own inline Serial.printf; updated CLAUDE.md's Architecture section to describe main.cpp's inlined showDiagnostics() instead of the removed diagnostics.* module; removed the unused RAW_TEST_SECTORS constant from config.h; renamed touch.h/touch.cpp's readTouch() sx/sy params to screenX/screenY matching mapTouchToScreen()'s naming; moved scaleGraphMaxSpeed()/scalePointCoords()/buildScaleSummary() from display_results.cpp into ui_geometry.h/.cpp (now in the native test_build_src_filter) with 9 new Unity tests covering edge cases (single-point graphs, failed/zero-speed points, first-successful-point summary); retyped ChunkIoFn's void* context to a concrete uint32_t* crcAccum since only chunkReadAndCrc ever used it.",
+      "detail": {
+        "status": "fixed",
+        "attestation": "I have actually Documented runQuickBenchmark()'s no-side-effect/default-result contract in benchmark.h; surfaced BenchmarkResult.cleanupOk in printBenchmarkResult and removed dead CardInfo::csdOk (with its test assertion); confirmed identityCheckName()/header() defs already matched their headers (stale finding from before a mid-review fix landed); split makeSdConfig(uint32_t hz) in sd_card.h/.cpp to one-arg-per-line (the remaining compact holdout); added a BenchmarkProgressFn callback threaded through runChunkedIo()/timedFileWrite/timedFileRead/verifyFile/runQuickBenchmark so benchmark.cpp no longer includes ui/display_ui.h, with main.cpp passing uiShowProgress as the callback; added CardInfo-style ioErrorCode/ioErrorData to BenchmarkResult, populated via recordSdError() on any chunk-transfer failure and on sd.open() failure, and printed in printBenchmarkResult(); switched rawReadAtCurrentSpeed() to call the shared recordSdError() with a formatted 'RAW READ LBA %lu' label instead of its own inline Serial.printf; updated CLAUDE.md's Architecture section to describe main.cpp's inlined showDiagnostics() instead of the removed diagnostics.* module; removed the unused RAW_TEST_SECTORS constant from config.h; renamed touch.h/touch.cpp's readTouch() sx/sy params to screenX/screenY matching mapTouchToScreen()'s naming; moved scaleGraphMaxSpeed()/scalePointCoords()/buildScaleSummary() from display_results.cpp into ui_geometry.h/.cpp (now in the native test_build_src_filter) with 9 new Unity tests covering edge cases (single-point graphs, failed/zero-speed points, first-successful-point summary); retyped ChunkIoFn's void* context to a concrete uint32_t* crcAccum since only chunkReadAndCrc ever used it. and I am not gaming the score."
+      }
+    },
+    {
+      "timestamp": "2026-09-22T15:41:01+00:00",
+      "action": "sync_subjective",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-09-22T15:41:01+00:00",
+      "action": "sync_communicate_score",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "auto_resolved": true
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:01:27+00:00",
+      "action": "sync_subjective",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:01:27+00:00",
+      "action": "review_import_sync",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "trigger": "review_import",
+        "new_ids": [
+          "review::.::holistic::convention_outlier::residual_compact_defs_sd_card_card_identity",
+          "review::.::holistic::error_consistency::raw_read_failure_no_error_code",
+          "review::.::holistic::error_consistency::write_only_error_code_fields"
+        ],
+        "added_to_queue": [
+          "review::.::holistic::convention_outlier::residual_compact_defs_sd_card_card_identity",
+          "review::.::holistic::error_consistency::raw_read_failure_no_error_code",
+          "review::.::holistic::error_consistency::write_only_error_code_fields"
+        ],
+        "workflow_injected_ids": [],
+        "triage_injected": false,
+        "triage_injected_ids": [],
+        "triage_deferred": false,
+        "diff_new": 3,
+        "diff_reopened": 0,
+        "diff_auto_resolved": 63,
+        "stale_pruned_from_queue": [],
+        "covered_subjective_pruned_from_queue": [
+          "subjective::convention_outlier",
+          "subjective::cross_module_architecture",
+          "subjective::error_consistency",
+          "subjective::naming_quality",
+          "subjective::package_organization",
+          "subjective::test_strategy"
+        ],
+        "covered_subjective": [
+          "subjective::convention_outlier",
+          "subjective::cross_module_architecture",
+          "subjective::error_consistency",
+          "subjective::naming_quality",
+          "subjective::package_organization",
+          "subjective::test_strategy"
+        ],
+        "stale_sync_injected": [
+          "subjective::design_coherence",
+          "subjective::error_consistency"
+        ],
+        "stale_sync_pruned": [],
+        "auto_cluster_changes": 0,
+        "import_scores_injected": [],
+        "import_scores_pruned": [],
+        "sync_status": "synced",
+        "sync_message": null
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:02:11+00:00",
+      "action": "done",
+      "issue_ids": [
+        "review::.::holistic::convention_outlier::residual_compact_defs_sd_card_card_identity",
+        "review::.::holistic::error_consistency::raw_read_failure_no_error_code",
+        "review::.::holistic::error_consistency::write_only_error_code_fields"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "Reformatted cardTypeName()/fsName() (sd_card.cpp) and attemptStageName()/resolveVendor() (card_identity.cpp) definitions to one-arg-per-line, matching their own headers and the codebase convention; added a recordSdError() call in runQuickBenchmark() after a raw-read failure, populating result.ioErrorCode/ioErrorData (mirroring spi_scale_benchmark.cpp's existing pattern for the same call); surfaced CardInfo.volumeErrorCode/volumeErrorData via a new 'mount error: XX/XX' line in printCardReport() when the volume fails to mount.",
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-09-22T20:02:11+00:00",
+      "action": "resolve",
+      "issue_ids": [
+        "review::.::holistic::convention_outlier::residual_compact_defs_sd_card_card_identity",
+        "review::.::holistic::error_consistency::raw_read_failure_no_error_code",
+        "review::.::holistic::error_consistency::write_only_error_code_fields"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "Reformatted cardTypeName()/fsName() (sd_card.cpp) and attemptStageName()/resolveVendor() (card_identity.cpp) definitions to one-arg-per-line, matching their own headers and the codebase convention; added a recordSdError() call in runQuickBenchmark() after a raw-read failure, populating result.ioErrorCode/ioErrorData (mirroring spi_scale_benchmark.cpp's existing pattern for the same call); surfaced CardInfo.volumeErrorCode/volumeErrorData via a new 'mount error: XX/XX' line in printCardReport() when the volume fails to mount.",
+      "detail": {
+        "status": "fixed",
+        "attestation": "I have actually Reformatted cardTypeName()/fsName() (sd_card.cpp) and attemptStageName()/resolveVendor() (card_identity.cpp) definitions to one-arg-per-line, matching their own headers and the codebase convention; added a recordSdError() call in runQuickBenchmark() after a raw-read failure, populating result.ioErrorCode/ioErrorData (mirroring spi_scale_benchmark.cpp's existing pattern for the same call); surfaced CardInfo.volumeErrorCode/volumeErrorData via a new 'mount error: XX/XX' line in printCardReport() when the volume fails to mount. and I am not gaming the score."
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:02:11+00:00",
+      "action": "sync_subjective",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:02:11+00:00",
+      "action": "sync_communicate_score",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "auto_resolved": true
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:11:42+00:00",
+      "action": "sync_subjective",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:11:42+00:00",
+      "action": "review_import_sync",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "trigger": "review_import",
+        "new_ids": [
+          "review::.::holistic::error_consistency::benchmark_prealloc_seekset_no_error_capture",
+          "review::.::holistic::error_consistency::raw_read_error_discarded_then_reconstructed",
+          "review::.::holistic::error_consistency::spiscale_error_fields_never_read"
+        ],
+        "added_to_queue": [
+          "review::.::holistic::error_consistency::benchmark_prealloc_seekset_no_error_capture",
+          "review::.::holistic::error_consistency::raw_read_error_discarded_then_reconstructed",
+          "review::.::holistic::error_consistency::spiscale_error_fields_never_read"
+        ],
+        "workflow_injected_ids": [],
+        "triage_injected": false,
+        "triage_injected_ids": [],
+        "triage_deferred": false,
+        "diff_new": 3,
+        "diff_reopened": 0,
+        "diff_auto_resolved": 63,
+        "stale_pruned_from_queue": [],
+        "covered_subjective_pruned_from_queue": [
+          "subjective::convention_outlier",
+          "subjective::error_consistency"
+        ],
+        "covered_subjective": [
+          "subjective::convention_outlier",
+          "subjective::error_consistency"
+        ],
+        "stale_sync_injected": [
+          "subjective::error_consistency"
+        ],
+        "stale_sync_pruned": [],
+        "auto_cluster_changes": 0,
+        "import_scores_injected": [],
+        "import_scores_pruned": [],
+        "sync_status": "synced",
+        "sync_message": null
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:12:09+00:00",
+      "action": "done",
+      "issue_ids": [
+        "review::.::holistic::error_consistency::benchmark_prealloc_seekset_no_error_capture",
+        "review::.::holistic::error_consistency::raw_read_error_discarded_then_reconstructed",
+        "review::.::holistic::error_consistency::spiscale_error_fields_never_read"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "Extracted the prealloc/seek/write/read/seek/verify sequence in runQuickBenchmark() into a new runFileBenchmarkSequence() helper (benchmark.cpp) using early returns, with recordSdError() called on every failing step (preallocate, each seekSet, and the timed steps which already recorded internally) -- this both closes the missing-error-capture gap and reads more clearly than the prior nested if/else chain. Gave rawReadAtCurrentSpeed() proper uint8_t& errorCode/errorData out-params (benchmark_raw.cpp + benchmark_internal.h) instead of discarding its precise per-LBA recordSdError() result into unused locals; both call sites (runQuickBenchmark in benchmark.cpp, runSpiScalingBenchmark in spi_scale_benchmark.cpp) now receive that error directly instead of redundantly re-deriving a coarser one. Made ui_geometry.cpp's buildScaleSummary() fall back to showing the first attempted point's SD error code when no speed qualified, instead of leaving the SPI-scale summary line blank -- so SpiScalePoint.errorCode/errorData are now genuinely read and displayed, with 2 new Unity tests covering the fallback and empty-result cases.",
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-09-22T20:12:09+00:00",
+      "action": "resolve",
+      "issue_ids": [
+        "review::.::holistic::error_consistency::benchmark_prealloc_seekset_no_error_capture",
+        "review::.::holistic::error_consistency::raw_read_error_discarded_then_reconstructed",
+        "review::.::holistic::error_consistency::spiscale_error_fields_never_read"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "Extracted the prealloc/seek/write/read/seek/verify sequence in runQuickBenchmark() into a new runFileBenchmarkSequence() helper (benchmark.cpp) using early returns, with recordSdError() called on every failing step (preallocate, each seekSet, and the timed steps which already recorded internally) -- this both closes the missing-error-capture gap and reads more clearly than the prior nested if/else chain. Gave rawReadAtCurrentSpeed() proper uint8_t& errorCode/errorData out-params (benchmark_raw.cpp + benchmark_internal.h) instead of discarding its precise per-LBA recordSdError() result into unused locals; both call sites (runQuickBenchmark in benchmark.cpp, runSpiScalingBenchmark in spi_scale_benchmark.cpp) now receive that error directly instead of redundantly re-deriving a coarser one. Made ui_geometry.cpp's buildScaleSummary() fall back to showing the first attempted point's SD error code when no speed qualified, instead of leaving the SPI-scale summary line blank -- so SpiScalePoint.errorCode/errorData are now genuinely read and displayed, with 2 new Unity tests covering the fallback and empty-result cases.",
+      "detail": {
+        "status": "fixed",
+        "attestation": "I have actually Extracted the prealloc/seek/write/read/seek/verify sequence in runQuickBenchmark() into a new runFileBenchmarkSequence() helper (benchmark.cpp) using early returns, with recordSdError() called on every failing step (preallocate, each seekSet, and the timed steps which already recorded internally) -- this both closes the missing-error-capture gap and reads more clearly than the prior nested if/else chain. Gave rawReadAtCurrentSpeed() proper uint8_t& errorCode/errorData out-params (benchmark_raw.cpp + benchmark_internal.h) instead of discarding its precise per-LBA recordSdError() result into unused locals; both call sites (runQuickBenchmark in benchmark.cpp, runSpiScalingBenchmark in spi_scale_benchmark.cpp) now receive that error directly instead of redundantly re-deriving a coarser one. Made ui_geometry.cpp's buildScaleSummary() fall back to showing the first attempted point's SD error code when no speed qualified, instead of leaving the SPI-scale summary line blank -- so SpiScalePoint.errorCode/errorData are now genuinely read and displayed, with 2 new Unity tests covering the fallback and empty-result cases. and I am not gaming the score."
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:12:09+00:00",
+      "action": "sync_communicate_score",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "auto_resolved": true
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:19:23+00:00",
+      "action": "review_import_sync",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "trigger": "review_import",
+        "new_ids": [
+          "review::.::holistic::error_consistency::error_field_surfacing_channel_asymmetry",
+          "review::.::holistic::error_consistency::seek_failures_share_generic_label",
+          "review::.::holistic::error_consistency::stale_buildscalesummary_doc_comment"
+        ],
+        "added_to_queue": [
+          "review::.::holistic::error_consistency::error_field_surfacing_channel_asymmetry",
+          "review::.::holistic::error_consistency::seek_failures_share_generic_label",
+          "review::.::holistic::error_consistency::stale_buildscalesummary_doc_comment"
+        ],
+        "workflow_injected_ids": [],
+        "triage_injected": false,
+        "triage_injected_ids": [],
+        "triage_deferred": false,
+        "diff_new": 3,
+        "diff_reopened": 0,
+        "diff_auto_resolved": 63,
+        "stale_pruned_from_queue": [],
+        "covered_subjective_pruned_from_queue": [
+          "subjective::error_consistency"
+        ],
+        "covered_subjective": [
+          "subjective::error_consistency"
+        ],
+        "stale_sync_injected": [],
+        "stale_sync_pruned": [],
+        "auto_cluster_changes": 0,
+        "import_scores_injected": [],
+        "import_scores_pruned": [],
+        "sync_status": "synced",
+        "sync_message": null
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:19:52+00:00",
+      "action": "done",
+      "issue_ids": [
+        "review::.::holistic::error_consistency::stale_buildscalesummary_doc_comment",
+        "review::.::holistic::error_consistency::seek_failures_share_generic_label"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "Updated buildScaleSummary()'s doc comment in ui_geometry.h to describe the FAILED/errorCode fallback line it now actually returns. Gave each of runFileBenchmarkSequence()'s three seekSet(0) failure branches a distinct label (SEEK BEFORE WRITE / SEEK BEFORE READ / SEEK BEFORE VERIFY) instead of the shared generic 'SEEK', so the Serial log identifies which seek failed.",
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-09-22T20:19:52+00:00",
+      "action": "resolve",
+      "issue_ids": [
+        "review::.::holistic::error_consistency::stale_buildscalesummary_doc_comment",
+        "review::.::holistic::error_consistency::seek_failures_share_generic_label"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "Updated buildScaleSummary()'s doc comment in ui_geometry.h to describe the FAILED/errorCode fallback line it now actually returns. Gave each of runFileBenchmarkSequence()'s three seekSet(0) failure branches a distinct label (SEEK BEFORE WRITE / SEEK BEFORE READ / SEEK BEFORE VERIFY) instead of the shared generic 'SEEK', so the Serial log identifies which seek failed.",
+      "detail": {
+        "status": "fixed",
+        "attestation": "I have actually Updated buildScaleSummary()'s doc comment in ui_geometry.h to describe the FAILED/errorCode fallback line it now actually returns. Gave each of runFileBenchmarkSequence()'s three seekSet(0) failure branches a distinct label (SEEK BEFORE WRITE / SEEK BEFORE READ / SEEK BEFORE VERIFY) instead of the shared generic 'SEEK', so the Serial log identifies which seek failed. and I am not gaming the score."
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:20:06+00:00",
+      "action": "skip",
+      "issue_ids": [
+        "review::.::holistic::error_consistency::error_field_surfacing_channel_asymmetry"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "CardInfo.volumeErrorCode and BenchmarkResult.ioErrorCode are Serial-only by deliberate scope choice, not oversight: showing them on the TFT would mean adding new UI elements to the already-compact home/benchmark-result screens (unlike AttemptResult, which has a dedicated diagnostics screen with room for a per-attempt row, and SpiScalePoint, which reuses the existing SPI-scale summary line). Serial output remains the full diagnostic channel for these two; a TFT surface for them is a real feature addition (new screen space/layout), not a small consistency fix, and is out of scope for this cleanup pass.",
+      "detail": {
+        "kind": "permanent",
+        "reason": null
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:20:30+00:00",
+      "action": "sync_subjective",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:20:30+00:00",
+      "action": "clear_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-09-22T20:20:30+00:00",
+      "action": "complete_postflight_scan",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "scan_count": 16
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:21:25+00:00",
+      "action": "skip",
+      "issue_ids": [
+        "orphaned::src/hardware/card_identity.cpp",
+        "orphaned::src/hardware/card_format.cpp",
+        "orphaned::src/hardware/touch_calibration.cpp"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": null,
+      "detail": {
+        "kind": "false_positive",
+        "reason": null
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:21:25+00:00",
+      "action": "auto_cluster",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:21:25+00:00",
+      "action": "sync_communicate_score",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "auto_resolved": true
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:25:52+00:00",
+      "action": "reconcile",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "superseded_count": 0,
+        "pruned_count": 0,
+        "resurfaced_count": 0,
+        "clusters_completed_count": 0
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:25:52+00:00",
+      "action": "auto_cluster",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "changes": true
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:25:52+00:00",
+      "action": "seed_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-09-22T20:25:52+00:00",
+      "action": "complete_postflight_scan",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "scan_count": 17
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:27:57+00:00",
+      "action": "skip",
+      "issue_ids": [
+        "orphaned::src/benchmark/benchmark_chunked_io.cpp"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": null,
+      "detail": {
+        "kind": "false_positive",
+        "reason": null
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:28:00+00:00",
+      "action": "skip",
+      "issue_ids": [
+        "test_coverage::src/benchmark/benchmark.h::untested_module",
+        "test_coverage::src/hardware/touch.h::untested_module",
+        "test_coverage::src/benchmark/benchmark_chunked_io.cpp::untested_module"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": "benchmark.h/touch.h are declaration-only headers (nothing to meaningfully test); benchmark_chunked_io.cpp is hardware-coupled (SdFat FsFile) and would need a full mock hardware layer -- same accepted-debt category documented earlier this session and in CLAUDE.md.",
+      "detail": {
+        "kind": "permanent",
+        "reason": null
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:28:02+00:00",
+      "action": "skip",
+      "issue_ids": [
+        "stale_exclude::.pio::.pio",
+        "stale_exclude::.vscode::.vscode"
+      ],
+      "cluster_name": null,
+      "actor": "user",
+      "note": null,
+      "detail": {
+        "kind": "false_positive",
+        "reason": null
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:28:23+00:00",
+      "action": "cluster_done",
+      "issue_ids": [],
+      "cluster_name": "auto/test_coverage-untested_module",
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "reason": "cluster members no longer actionable in state"
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:28:23+00:00",
+      "action": "reconcile",
+      "issue_ids": [
+        "test_coverage::src/benchmark/benchmark.h::untested_module",
+        "test_coverage::src/benchmark/benchmark_chunked_io.cpp::untested_module",
+        "test_coverage::src/hardware/touch.h::untested_module"
+      ],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "superseded_count": 3,
+        "pruned_count": 0,
+        "resurfaced_count": 0,
+        "clusters_completed_count": 1
+      }
+    },
+    {
+      "timestamp": "2026-09-22T20:28:23+00:00",
+      "action": "clear_start_scores",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {}
+    },
+    {
+      "timestamp": "2026-09-22T20:28:23+00:00",
+      "action": "complete_postflight_scan",
+      "issue_ids": [],
+      "cluster_name": null,
+      "actor": "system",
+      "note": null,
+      "detail": {
+        "scan_count": 18
+      }
+    }
+  ],
+  "epic_triage_meta": {},
+  "commit_log": [],
+  "uncommitted_issues": [
+    "review::.::holistic::abstraction_fitness::diagnostics_screen_single_caller_wrapper",
+    "review::.::holistic::ai_generated_debt::duplicated_error_recording_boilerplate",
+    "review::.::holistic::ai_generated_debt::touch_debug_logging_left_in",
+    "review::.::holistic::api_surface_coherence::sd_scan_result_shape_asymmetry",
+    "review::.::holistic::contract_coherence::spi_scale_benchmark_hidden_rescan",
+    "review::.::holistic::convention_outlier::touch_calibration_namespace_outlier",
+    "review::.::holistic::convention_outlier::touch_module_formatting_island",
+    "review::.::holistic::dependency_health::unpinned_lib_deps_versions",
+    "review::.::holistic::design_coherence::benchmark_loop_triplication",
+    "review::.::holistic::design_coherence::quick_benchmark_mixes_orchestration_and_reporting",
+    "review::.::holistic::error_consistency::duplicated_dma_alloc_error_handling",
+    "review::.::holistic::error_consistency::volume_mount_failure_no_error_code",
+    "review::.::holistic::high_level_elegance::wait_for_tap_misplaced",
+    "review::.::holistic::initialization_coupling::raw_read_missing_card_null_check",
+    "review::.::holistic::initialization_coupling::sd_state_restore_by_convention",
+    "review::.::holistic::low_level_elegance::benchmark_duplicated_chunked_loops",
+    "review::.::holistic::low_level_elegance::spi_scale_result_monolithic_render",
+    "review::.::holistic::low_level_elegance::split_statement_formatting_convention",
+    "review::.::holistic::mid_level_elegance::hidden_rescan_side_effect_in_spi_scaling",
+    "review::.::holistic::mid_level_elegance::transitive_util_includes_via_sd_card_header",
+    "review::.::holistic::naming_quality::diagnostics_screen_name_collision",
+    "review::.::holistic::naming_quality::print_card_identity_scope_mismatch",
+    "review::.::holistic::package_organization::util_dir_hardware_affinity_mismatch",
+    "review::.::holistic::test_strategy::no_ci_for_native_tests",
+    "review::.::holistic::test_strategy::stale_claude_md_no_tests_claim",
+    "review::.::holistic::type_safety::fsname_magic_number_fs_types",
+    "review::.::holistic::type_safety::stray_static_cast_amid_c_style_casts",
+    "review::.::holistic::contract_coherence::benchmark_h_doc_asymmetry",
+    "review::.::holistic::contract_coherence::write_only_status_fields",
+    "review::.::holistic::convention_outlier::card_identity_and_header_decl_def_mismatch",
+    "review::.::holistic::convention_outlier::compact_signature_style_island",
+    "review::.::holistic::cross_module_architecture::benchmark_calls_ui_directly",
+    "review::.::holistic::error_consistency::benchmark_result_no_error_capture",
+    "review::.::holistic::error_consistency::raw_read_bypasses_recordsderror",
+    "review::.::holistic::error_consistency::silent_file_open_failure",
+    "review::.::holistic::high_level_elegance::claudemd_stale_diagnostics_module",
+    "review::.::holistic::logic_clarity::csd_ok_dead_state",
+    "review::.::holistic::logic_clarity::unused_raw_test_sectors_constant",
+    "review::.::holistic::naming_quality::touch_sx_sy_abbreviation",
+    "review::.::holistic::package_organization::benchmark_depends_on_ui",
+    "review::.::holistic::test_strategy::untested_pure_logic_in_display_results",
+    "review::.::holistic::type_safety::void_star_context_callback",
+    "review::.::holistic::convention_outlier::residual_compact_defs_sd_card_card_identity",
+    "review::.::holistic::error_consistency::raw_read_failure_no_error_code",
+    "review::.::holistic::error_consistency::write_only_error_code_fields",
+    "review::.::holistic::error_consistency::benchmark_prealloc_seekset_no_error_capture",
+    "review::.::holistic::error_consistency::raw_read_error_discarded_then_reconstructed",
+    "review::.::holistic::error_consistency::spiscale_error_fields_never_read",
+    "review::.::holistic::error_consistency::stale_buildscalesummary_doc_comment",
+    "review::.::holistic::error_consistency::seek_failures_share_generic_label"
+  ],
+  "commit_tracking_branch": null,
+  "scan_count_at_plan_start": 17,
+  "previous_plan_start_scores": {}
+}

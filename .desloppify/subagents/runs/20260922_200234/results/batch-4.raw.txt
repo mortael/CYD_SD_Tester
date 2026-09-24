@@ -1,0 +1,117 @@
+{
+  "batch": "error_consistency",
+  "batch_index": 4,
+  "assessments": {
+    "error_consistency": 78.0
+  },
+  "dimension_notes": {
+    "error_consistency": {
+      "evidence": [
+        "src/hardware/sd_card.cpp's recordSdError() is the single, consistently-formatted helper for capturing SD/SPI hardware failures (Serial.printf '%s FAIL %02X/%02X'), and it is now used across scanCard() (init/CID/CSD/read/volume), runQuickBenchmark()'s chunked I/O and sd.open() failure, runQuickBenchmark()'s raw-read failure (newly added), and runSpiScalingBenchmark()'s init/read/bench failures.",
+        "runQuickBenchmark() (src/benchmark/benchmark.cpp) calls recordSdError() for chunk-transfer failure, sd.open() failure, and raw-read failure, but has no recordSdError() call when file.preAllocate() fails or when any of its three file.seekSet(0) calls fail (lines ~417-474) -- an inconsistency inside the very function most recently edited to close this class of gap.",
+        "benchmark_raw.cpp's rawReadAtCurrentSpeed() calls recordSdError() internally with a precise 'RAW READ LBA %lu' label but writes the result into local uint8_t errorCode/errorData variables that are discarded when the function returns false (its signature has no error out-params, unlike sibling helpers timedFileWrite/timedFileRead/verifyFile which all take uint8_t& errorCode, uint8_t& errorData).",
+        "Both callers of rawReadAtCurrentSpeed() (benchmark.cpp's runQuickBenchmark() and spi_scale_benchmark.cpp's runSpiScalingBenchmark()) re-call recordSdError() themselves immediately after a false return, using a coarser generic label ('RAW READ' / 'BENCH') and relying on the SD object's error state being unchanged since the internal call -- a redundant, context-losing double-capture.",
+        "SpiScalePoint.errorCode/errorData (src/core/app_types.h) are populated via recordSdError() in spi_scale_benchmark.cpp, but display_results.cpp's uiShowSpiScaleResult()/scalePointCoords()/drawScalePoint() never reference either field -- a failed point is shown only as unplotted on the graph, unlike AttemptResult's structurally identical errorCode/errorData, which display_diagnostics.cpp does surface as an on-screen '%s %02X/%02X' line.",
+        "CardInfo is fully reset ('info = {};') at the top of scanCard(), and BenchmarkResult/SpiScaleResult are fresh locals per call, so no stale error codes carry over between runs -- failure state is predictable run-to-run even where it isn't fully surfaced."
+      ],
+      "impact_scope": "subsystem",
+      "fix_scope": "multi_file_refactor",
+      "confidence": "high"
+    }
+  },
+  "dimension_judgment": {
+    "error_consistency": {
+      "dimension_character": "Error handling here centers on one well-adopted helper, recordSdError(), used consistently for capturing SD/SPI hardware failures across scanCard(), the quick benchmark, the SPI scaling sweep, and raw sector reads, with clean per-run state resets that avoid stale error carryover between scans. But the ongoing push to close remaining gaps has left the migration half-finished: runQuickBenchmark() still skips error capture on preAllocate()/seekSet() failures in the same function that captures it everywhere else, rawReadAtCurrentSpeed() computes a precise per-LBA error internally only to discard it and force two separate callers to reconstruct a coarser version, and SpiScalePoint's error fields are written but never read by any consumer.",
+      "score_rationale": "This lands in the 'solid but uneven' band: the dominant pattern (recordSdError() as the one error-capture path) is real and mostly followed, so a developer can generally predict how SD failures get recorded, but the exceptions are concentrated in exactly the files most recently touched for this concern across several fix rounds, so the inconsistency is narrow but still not fully resolved. That keeps the score below the 80s ceiling rather than dropping into the 60s, since the remaining gaps are a handful of untraced branches and one dead-store field rather than a systemic mixed-strategy problem across the codebase."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "error_consistency",
+      "identifier": "benchmark_prealloc_seekset_no_error_capture",
+      "summary": "runQuickBenchmark() captures no SD error code on preAllocate()/seekSet() failure, unlike every other I/O failure branch in the same function",
+      "related_files": ["src/benchmark/benchmark.cpp"],
+      "evidence": [
+        "file.preAllocate(BENCH_TEST_SIZE) failure only prints a local Serial.printf PASS/FAIL line and sets result.preallocOk=false -- no recordSdError() call.",
+        "The three 'if (... && file.seekSet(0))' guards silently fall through to leaving fileWriteOk/fileReadOk/verifyOk false with no error capture, while every other failure branch in this same function (chunk transfer, sd.open(), raw read) does call recordSdError() to populate result.ioErrorCode/ioErrorData."
+      ],
+      "suggestion": "Call recordSdError(sd, result.ioErrorCode, result.ioErrorData, \"PREALLOC\") when preAllocate() fails, and a similar call (e.g. \"SEEK\") when any of the three file.seekSet(0) calls fail, mirroring the existing pattern used for every other failure branch in runQuickBenchmark().",
+      "confidence": "high",
+      "impact_scope": "local",
+      "fix_scope": "single_edit",
+      "root_cause_cluster": "sd_error_capture_migration"
+    },
+    {
+      "dimension": "error_consistency",
+      "identifier": "raw_read_error_discarded_then_reconstructed",
+      "summary": "rawReadAtCurrentSpeed() computes a precise per-LBA SD error internally but discards it, forcing both callers to redundantly re-derive a coarser version",
+      "related_files": [
+        "src/benchmark/benchmark_raw.cpp",
+        "src/benchmark/benchmark.cpp",
+        "src/benchmark/spi_scale_benchmark.cpp"
+      ],
+      "evidence": [
+        "benchmark_raw.cpp: recordSdError() is called into local 'uint8_t errorCode; uint8_t errorData;' that are immediately discarded when the function returns false -- rawReadAtCurrentSpeed()'s signature (benchmark_internal.h) has no error out-params, unlike sibling chunked-I/O helpers timedFileWrite/timedFileRead/verifyFile which all take 'uint8_t& errorCode, uint8_t& errorData'.",
+        "benchmark.cpp's runQuickBenchmark() and spi_scale_benchmark.cpp's runSpiScalingBenchmark() both re-call recordSdError() themselves right after rawReadAtCurrentSpeed() returns false, relying on sd's error state being unchanged since the internal call, and using a generic 'RAW READ'/'BENCH' label instead of the internal call's precise 'RAW READ LBA %lu' label -- so the more useful diagnostic (which sector failed) never reaches the persisted result, only a transient Serial line."
+      ],
+      "suggestion": "Add 'uint8_t& errorCode, uint8_t& errorData' out-parameters to rawReadAtCurrentSpeed() (matching timedFileWrite/timedFileRead/verifyFile's convention) and have it write into them directly instead of local throwaway variables; remove the now-redundant recordSdError() calls in runQuickBenchmark() and runSpiScalingBenchmark().",
+      "confidence": "medium",
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor",
+      "root_cause_cluster": "sd_error_capture_migration"
+    },
+    {
+      "dimension": "error_consistency",
+      "identifier": "spiscale_error_fields_never_read",
+      "summary": "SpiScalePoint.errorCode/errorData are populated by recordSdError() but never read back anywhere, unlike AttemptResult's identical fields",
+      "related_files": [
+        "src/benchmark/spi_scale_benchmark.cpp",
+        "src/core/app_types.h",
+        "src/ui/display_results.cpp"
+      ],
+      "evidence": [
+        "spi_scale_benchmark.cpp writes point.errorCode/point.errorData via recordSdError() on INIT/READ/BENCH failure.",
+        "uiShowSpiScaleResult() and its helpers scalePointCoords()/drawScalePoint() in display_results.cpp never reference point.errorCode or point.errorData -- a failed point is only shown as unplotted on the graph.",
+        "AttemptResult.errorCode/errorData, the structurally identical field on the per-speed qualification result, IS surfaced -- uiShowDiagnostics() (display_diagnostics.cpp) renders it as an on-screen '%s %02X/%02X' line."
+      ],
+      "suggestion": "Either show point.errorCode/errorData next to failed points in uiShowSpiScaleResult() (e.g. folded into the text built by buildScaleSummary()), or drop the fields if the scaling screen intentionally only conveys pass/fail visually -- as written, the fields are dead weight that looks like an oversight next to AttemptResult's equivalent treatment.",
+      "confidence": "medium",
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "root_cause_cluster": "sd_error_capture_migration"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "The SD error-capture convention (recordSdError() + persisted errorCode/errorData fields) has been rolled out incrementally, fix-round by fix-round, to whichever failure path a prior review flagged -- each round closes the specific gap named but doesn't audit sibling branches in the same function/struct family, so new asymmetric gaps keep surfacing (preAllocate/seekSet now, after raw-read and mount-error were closed)."
+    ],
+    "likely_symptoms": [
+      "benchmark_prealloc_seekset_no_error_capture"
+    ],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "error_consistency": {
+      "add": [
+        {
+          "header": "recordSdError() is the single SD error-capture path",
+          "description": "scanCard(), runQuickBenchmark(), runSpiScalingBenchmark(), and rawReadAtCurrentSpeed() all funnel hardware SD/SPI failures through the one recordSdError() helper in sd_card.cpp, giving a uniform '%02X/%02X' error format instead of ad hoc per-file logging.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Per-run result structs reset cleanly, no stale errors",
+          "description": "CardInfo is reassigned to '{}' at the top of scanCard(), and BenchmarkResult/SpiScaleResult are fresh locals per call, so a failure code from a prior run can never leak into a later report.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "SD error-field migration is incremental and still uneven",
+          "description": "Each review round has closed one specific missing-recordSdError() gap (raw read, mount error) without auditing sibling branches in the same function or struct family, so new gaps of the same shape (preAllocate/seekSet failures, rawReadAtCurrentSpeed's discarded internal capture, SpiScalePoint's unread fields) keep appearing one at a time rather than the pattern being finished in one pass.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

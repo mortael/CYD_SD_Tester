@@ -1,0 +1,98 @@
+{
+  "batch": "abstraction_fitness",
+  "batch_index": 6,
+  "assessments": {
+    "abstraction_fitness": 93.5
+  },
+  "dimension_notes": {
+    "abstraction_fitness": {
+      "evidence": [
+        "Mechanical scan_evidence.abstractions.summary reports zero delegation-heavy classes, zero facade modules, zero one-impl-interface count, and zero wrapper functions across the codebase — consistent with what direct reading confirms.",
+        "src/util/bench_math.*, src/util/card_format.*, src/util/card_identity.*, src/util/touch_calibration.*, and src/ui/ui_geometry.* are each split out specifically to be hardware-independent pure functions, with header comments explicitly stating 'safe to unit-test on host (see test/test_*)' — an abstraction boundary that earns its keep by enabling host-side unit tests for logic that would otherwise be entangled with Arduino/TFT_eSPI/SdFat calls.",
+        "src/benchmark/benchmark_internal.h and src/ui/display_ui_internal.h are genuine shared-internals headers (allocateDmaBuffer/rawReadAtCurrentSpeed; tft()/header()/lineRow()) consumed by 2-3 sibling .cpp files with real logic in them, not re-export facades.",
+        "src/hardware/sd_card.h deliberately exposes getSd() as an escape hatch to the raw SdFs API for the two call sites (benchmark.cpp, benchmark_raw.cpp, spi_scale_benchmark.cpp) that need raw file/sector I/O, rather than growing a redundant wrapper API over SdFat's own methods — a comment on cardTypeName shows the module boundary was drawn deliberately ('stays here rather than in the hardware-independent card_identity module... Takes capacity explicitly... instead of reading global card state').",
+        "No classes, interfaces, or generics exist anywhere in src/ — every module is a set of free functions closing over module-static state (sd.cpp's static SdFs sd/CardInfo info, display_ui_internal.cpp's function-local static TFT_eSPI instance), which is proportionate for a 31-file/3142-LOC embedded diagnostic tool and avoids abstraction ceremony a small firmware app doesn't need.",
+        "src/ui/diagnostics.cpp is a single-purpose module whose entire content is showDiagnosticsScreen() composing getCardInfo()/getAttempts()/getAttemptCount() into uiShowDiagnostics(...) then uiWaitForTap() — functionally identical in kind to rescan() and runBenchMenu(), which are instead defined inline as static functions directly in src/main.cpp. This is the one place where extraction granularity is inconsistent (a dedicated header+cpp for a single call site) rather than an abstraction-cost problem at scale."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "The only concrete abstraction-fitness defect found is the inconsistent extraction of showDiagnosticsScreen() into its own header/cpp pair for a single caller, while equivalent glue (rescan(), runBenchMenu()) stays inline in main.cpp. Beyond that, the codebase is small (31 files, ~3.1k LOC) which limits how much evidence of abstraction fitness at scale can be gathered, so the score is capped short of exemplary on breadth of evidence rather than on any material indirection cost observed.",
+      "sub_axes": {
+        "abstraction_leverage": 95.0,
+        "indirection_cost": 92.0,
+        "interface_honesty": 96.0,
+        "delegation_density": 98.0,
+        "definition_directness": 94.0,
+        "type_discipline": 96.0
+      }
+    }
+  },
+  "dimension_judgment": {
+    "abstraction_fitness": {
+      "dimension_character": "This codebase is abstraction-minimal by design and the abstractions it does have consistently pay for themselves: pure-logic modules (bench_math, card_format, card_identity, touch_calibration, ui_geometry) are split out specifically to enable host-side unit testing, internal-shared headers carry real logic used by genuine multiple callers, and sd_card.h deliberately exposes a raw escape hatch instead of over-wrapping SdFat. The only blemish is a single inconsistently-extracted glue module (diagnostics.cpp) that got its own file pair while functionally identical orchestration (rescan, runBenchMenu) stays inline in main.cpp — an isolated inconsistency, not a systemic indirection problem.",
+      "score_rationale": "This sits above the 90 'strong' anchor: a developer reading any module here finds a direct, single-hop call chain and can trust that every header maps to real logic rather than ceremony, with no facades, no delegation-heavy classes, and no single-implementation interface families anywhere in scope. It falls short of 100 only because of the one small, isolated extraction inconsistency (diagnostics.cpp) and because the codebase's small size limits how much can be concluded about abstraction fitness at larger scale."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "abstraction_fitness",
+      "identifier": "diagnostics_screen_single_caller_wrapper",
+      "summary": "diagnostics.cpp is a dedicated module for one call site's glue code, inconsistent with sibling orchestration kept inline in main.cpp",
+      "related_files": [
+        "src/ui/diagnostics.h",
+        "src/ui/diagnostics.cpp",
+        "src/main.cpp"
+      ],
+      "evidence": [
+        "src/ui/diagnostics.cpp's entire content is showDiagnosticsScreen(), which calls uiShowDiagnostics(getCardInfo(), getAttempts(), getAttemptCount()) then uiWaitForTap() — a 2-call composition with exactly one caller, in src/main.cpp's HomeAction::Diagnostics case.",
+        "src/main.cpp defines its own equivalent glue functions, rescan() and runBenchMenu(), as static functions inline in main.cpp rather than extracting them into their own header/cpp pair, so there is no consistent rule for when orchestration glue earns its own module versus staying inline."
+      ],
+      "suggestion": "Inline showDiagnosticsScreen()'s two statements directly into the HomeAction::Diagnostics case in src/main.cpp (matching how rescan() and runBenchMenu() are handled), and delete src/ui/diagnostics.h and src/ui/diagnostics.cpp.",
+      "confidence": "low",
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "abstraction_fitness": {
+      "add": [
+        {
+          "header": "Pure-logic modules split out for host-side unit testing",
+          "description": "bench_math, card_format, card_identity, touch_calibration, and ui_geometry are deliberately isolated from Arduino/TFT_eSPI/SdFat dependencies specifically so they can be unit-tested on the host (each header says so explicitly), which is the reason these modules exist as separate translation units rather than being inlined into their hardware-facing callers.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "No OOP/DI ceremony; free functions over module-static state",
+          "description": "The codebase has no classes, interfaces, or generics anywhere in src/; every module is a set of free functions closing over file-static state (e.g. sd_card.cpp's static SdFs sd, display_ui_internal.cpp's function-local static TFT_eSPI). This is proportionate for a 31-file embedded diagnostic tool and avoids abstraction layers the domain doesn't need.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "internal.h headers carry real shared logic, not facades",
+          "description": "benchmark_internal.h (allocateDmaBuffer, rawReadAtCurrentSpeed) and display_ui_internal.h (tft(), header(), lineRow()) are genuine shared-internals headers consumed by multiple sibling .cpp files with real logic behind them, not re-export facades.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "sd_card.h deliberately exposes a raw SdFat escape hatch",
+          "description": "getSd() intentionally returns the raw SdFs so the two benchmark call sites that need raw sector/file I/O can use it directly, instead of sd_card.h growing a redundant wrapper API over SdFat's own methods. The cardTypeName() comment shows this module boundary was drawn deliberately rather than by accident.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Inconsistent extraction granularity for one-off orchestration glue",
+          "description": "showDiagnosticsScreen() (src/ui/diagnostics.cpp) is functionally the same kind of thin, single-caller orchestration as rescan() and runBenchMenu() in main.cpp, but only it was given its own header/cpp pair — the codebase has no settled rule for when glue code becomes its own module.",
+          "settled": false,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

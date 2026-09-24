@@ -1,0 +1,96 @@
+{
+  "batch": "ai_generated_debt",
+  "batch_index": 13,
+  "assessments": {
+    "ai_generated_debt": 83.0
+  },
+  "dimension_notes": {
+    "ai_generated_debt": {
+      "evidence": [
+        "Header comments throughout (bench_math.h, ui_geometry.h, card_identity.h, touch_calibration.h, sd_card.h) explain non-obvious WHY (testability boundaries, X/Y axis swap on the touch panel, SDHC/SDXC capacity threshold rationale) rather than restating the following line of code.",
+        "Trivial one-line getters (getSd(), getCardInfo(), getAttempts()) in sd_card.cpp carry zero comments — no docstring bloat on trivial functions anywhere in the codebase.",
+        "Naming is domain-specific everywhere sampled (crc32Update, spiEfficiencyPercent, cardTypeName, resolveVendor, identityCheckName) — no generic handleX/processX/doX names found.",
+        "sd_card.cpp::scanCard() repeats an identical 4-line error-recording block (stage/errorCode/errorData/Serial.printf/continue) four times for InitFailed/CidFailed/CsdFailed/ReadFailed, varying only the enum value and message text.",
+        "spi_scale_benchmark.cpp::runSpiScalingBenchmark() repeats the same errorCode/errorData/Serial.printf/continue shape three times (INIT FAIL, READ FAIL, BENCH FAIL) — the identical boilerplate pattern is copied across two separate files.",
+        "touch.cpp::readTouch() unconditionally prints raw and mapped touch coordinates via Serial.printf on every successful sample, unlike the rest of the codebase where Serial output is a deliberate, bounded diagnostic narrative (scan/benchmark banners) rather than per-call chatter.",
+        "No pass-through wrapper anti-pattern found: showDiagnosticsScreen() (diagnostics.cpp) sequences two calls (uiShowDiagnostics + uiWaitForTap), which is genuine orchestration, not a no-op forward."
+      ],
+      "impact_scope": "subsystem",
+      "fix_scope": "multi_file_refactor",
+      "confidence": "medium"
+    }
+  },
+  "dimension_judgment": {
+    "ai_generated_debt": {
+      "dimension_character": "The codebase is largely free of LLM-hallmark noise: comments consistently explain non-obvious hardware/design rationale rather than restating code, naming is domain-specific, and there is no docstring bloat or defensive overengineering. The two real defects found are narrow and mechanical: an identical error-recording block duplicated verbatim across two files, and one unconditional debug print left in a hot-path touch function.",
+      "score_rationale": "This sits between the 90 anchor (\"mostly clean with small pockets of boilerplate\") and 80 (\"formulaic patterns that obscure real logic\") — the duplicated error-handling boilerplate spans two files and recurs seven times total, which is more than an isolated pocket, but it coexists with strong, purposeful commenting and precise naming everywhere else, so the codebase does not read as generated-noise-heavy overall."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "ai_generated_debt",
+      "identifier": "duplicated_error_recording_boilerplate",
+      "summary": "Identical error-recording boilerplate copied verbatim across sd_card.cpp and spi_scale_benchmark.cpp",
+      "related_files": [
+        "src/hardware/sd_card.cpp",
+        "src/benchmark/spi_scale_benchmark.cpp"
+      ],
+      "evidence": [
+        "sd_card.cpp scanCard() repeats the pattern `a.errorCode = sd.sdErrorCode(); a.errorData = sd.sdErrorData(); Serial.printf(\"...FAIL %02X/%02X\\n\", a.errorCode, a.errorData); continue;` four times (InitFailed, CidFailed, CsdFailed, ReadFailed branches), differing only in the stage enum and message text.",
+        "spi_scale_benchmark.cpp runSpiScalingBenchmark() repeats the same shape (point.errorCode/point.errorData/Serial.printf/continue) three times for INIT FAIL, READ FAIL, and BENCH FAIL."
+      ],
+      "suggestion": "Extract one small helper, e.g. `void recordSpiFailure(uint8_t& errorCode, uint8_t& errorData, const char* label)`, that reads sd.sdErrorCode()/sdErrorData(), stores them, and prints the formatted failure line; call it from both AttemptResult and SpiScalePoint failure branches instead of re-typing the same four lines seven times.",
+      "confidence": "high",
+      "impact_scope": "subsystem",
+      "fix_scope": "multi_file_refactor",
+      "root_cause_cluster": "sd_error_recording_duplication"
+    },
+    {
+      "dimension": "ai_generated_debt",
+      "identifier": "touch_debug_logging_left_in",
+      "summary": "Unconditional raw/screen coordinate debug prints fire on every touch sample in readTouch()",
+      "related_files": [
+        "src/hardware/touch.cpp"
+      ],
+      "evidence": [
+        "readTouch() unconditionally calls Serial.printf(\"touch raw X=%d Y=%d\\n\", rawX, rawY) and Serial.printf(\"touch screen X=%d Y=%d\\n\", sx, sy) on every successful read.",
+        "readTouch() is polled continuously from loop() and waitForBenchMenuAction() while a finger is on the panel, so this floods the serial console every few milliseconds during any touch interaction — unlike the rest of the codebase, where Serial output is a deliberate, bounded per-scan/per-benchmark narrative."
+      ],
+      "suggestion": "Remove the two debug printfs from readTouch(), or gate them behind a compile-time DEBUG_TOUCH flag if they are still needed for calibration work.",
+      "confidence": "medium",
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "The identical error-recording shape in sd_card.cpp and spi_scale_benchmark.cpp suggests the SPI-qualification loop was copy-pasted into the SPI-scaling loop without factoring out the shared failure-recording step."
+    ],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "ai_generated_debt": {
+      "add": [
+        {
+          "header": "Header comments explain WHY, not WHAT",
+          "description": "Comments in bench_math.h, ui_geometry.h, card_identity.h, touch_calibration.h, and sd_card.h consistently document non-obvious rationale (host-testability boundaries, the touch panel's X/Y axis swap, the SDHC/SDXC capacity threshold) rather than restating the adjacent code, and trivial functions carry no comments at all.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Domain-specific naming, no generic handlers",
+          "description": "Function names across the codebase (crc32Update, spiEfficiencyPercent, cardTypeName, resolveVendor, identityCheckName) are precise and domain-aligned; no handleData/processItem/doOperation-style generic names were found.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Uniform one-item-per-line call formatting",
+          "description": "Nearly every function call and multi-part expression across all 31 files is broken one argument/operand per line, even trivial single-token returns (e.g. `return\\n HomeAction::Rescan;`). This is applied with total consistency codebase-wide, so per system-prompt guidance on uniform style choices it is recorded as a neutral characteristic rather than a defect, though it substantially inflates file length.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

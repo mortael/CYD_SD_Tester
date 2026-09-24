@@ -1,0 +1,92 @@
+{
+  "batch": "package_organization",
+  "batch_index": 15,
+  "assessments": {
+    "package_organization": 90.5
+  },
+  "dimension_notes": {
+    "package_organization": {
+      "evidence": [
+        "src/ splits cleanly into core/ (2 files, app_types.h+config.h, avg_fan_in 9.0, avg_fan_out 0.5, no includes outside cstdint/cstddef and each other) -> hardware/ (10 files) -> {benchmark/ (7 files), ui/ (9 files)}, matching coupling_matrix direction: ui->hardware(9), benchmark->core(6), hardware->core(6), benchmark->hardware(5), ui->core(3) -- all point toward the shared kernel, no reciprocal edges from core/ or hardware/ back out",
+        "The prior util/ directory (flagged historically for holding hardware-only pure helpers alongside domain folders) is gone; card_format.*/card_identity.*/touch_calibration.* now live in hardware/, their sole consumer domain, and bench_math.h/ui_geometry.h correctly stay in benchmark/ and ui/ respectively -- the inconsistency is fully resolved",
+        "benchmark/benchmark.cpp includes \"../ui/display_ui.h\" and calls uiShowProgress() 4 times inside the shared runChunkedIo() helper (lines 9, 98, 139, 361, 429) -- this is the one backward coupling_matrix edge (benchmark->ui: 1) and it contradicts the codebase's own stated layering rule",
+        "benchmark/benchmark_internal.h's header comment explicitly states allocateDmaBuffer() lives in hardware/sd_card.h 'since hardware/ can't depend back on benchmark/' -- proving the team already enforces one-directional layering elsewhere, which makes benchmark/'s undocumented dependency on ui/ an inconsistency rather than a considered exception",
+        "spi_scale_benchmark.cpp and benchmark_raw.cpp (the other two benchmark/ files) do NOT include ui/ headers, so the ui coupling is isolated to one file/helper, not systemic across the domain folder",
+        "main.cpp (151 lines) is the only src/-root file and is PlatformIO's mandated entry point -- not a straggler under the package_organization rubric",
+        "test/ mirrors src/ 1:1 for the pure/testable modules (test_app_types, test_bench_math, test_card_format, test_card_identity, test_touch_calibration, test_ui_geometry) -- standard test-mirroring, not a defect",
+        "benchmark/ and ui/ each use a private *_internal.h header (benchmark_internal.h, display_ui_internal.h) to share helpers within the folder without exposing them on the public header -- the same pattern applied consistently in both domains"
+      ],
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor",
+      "confidence": "high",
+      "issues_preventing_higher_score": "One coupling-direction inconsistency remains: benchmark/ (domain/business logic) directly includes and calls into ui/ (presentation) for progress callbacks, breaking the otherwise strictly one-directional core<-hardware<-{benchmark,ui} dependency graph and contradicting the layering rule the codebase documents for itself elsewhere (benchmark_internal.h)."
+    }
+  },
+  "dimension_judgment": {
+    "package_organization": {
+      "dimension_character": "The four top-level domains (core/, hardware/, benchmark/, ui/) map cleanly onto real ownership boundaries, and the previous review round's util/ dumping-ground problem has been fully resolved by folding single-consumer pure helpers into their owning domain. The one remaining wrinkle is a single backward coupling edge -- benchmark/ reaching into ui/ to report progress -- that is isolated to one file but breaks the layering discipline the codebase otherwise enforces and documents explicitly for itself.",
+      "score_rationale": "This sits at the 90 anchor (mostly coherent with minor placement outliers): a developer can predict where nearly everything lives and the directory graph is acyclic except for one edge. It is held below higher scores because that one edge (benchmark->ui) is a real, evidenced coupling-direction failure per the rubric, not just a style nit, and it undermines a rule the team itself states in benchmark_internal.h."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "package_organization",
+      "identifier": "benchmark_depends_on_ui",
+      "summary": "benchmark/benchmark.cpp includes ui/display_ui.h and calls uiShowProgress() directly, inverting the domain->presentation layering used everywhere else",
+      "related_files": [
+        "src/benchmark/benchmark.cpp",
+        "src/benchmark/benchmark.h",
+        "src/ui/display_ui.h",
+        "src/main.cpp"
+      ],
+      "evidence": [
+        "benchmark.cpp line 9: #include \"../ui/display_ui.h\"",
+        "runChunkedIo() (benchmark.cpp lines 84-159) calls uiShowProgress() twice, and runQuickBenchmark() calls it two more times (lines 361, 429), making the domain-logic I/O loop directly responsible for driving the TFT progress screen",
+        "coupling_matrix shows benchmark->ui: 1 as the only edge that does not point toward core/, and no other benchmark/ file (benchmark_raw.cpp, spi_scale_benchmark.cpp) includes any ui/ header",
+        "benchmark_internal.h's own comment states DMA buffer allocation was deliberately kept in hardware/sd_card.h 'since hardware/ can't depend back on benchmark/', showing the team already enforces this direction of layering elsewhere but did not apply the same rule to benchmark->ui"
+      ],
+      "suggestion": "Have runQuickBenchmark() (and the shared runChunkedIo() helper) accept a progress-callback function pointer instead of calling uiShowProgress() directly -- reuse the exact ChunkIoFn function-pointer idiom already defined in this same file (benchmark.cpp lines 31-36) for a new `using ProgressFn = void(*)(const char*, const char*, size_t, size_t, float);` parameter threaded through runChunkedIo()/timedFileWrite()/timedFileRead()/verifyFile()/runQuickBenchmark(). main.cpp then passes uiShowProgress directly as the callback when it calls runQuickBenchmark(uiShowProgress). This removes benchmark/'s #include of ui/display_ui.h entirely, restoring a strictly one-directional core<-hardware<-{benchmark,ui} dependency graph, without introducing any new abstraction machinery (it mirrors a pattern the file already uses).",
+      "confidence": "medium",
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor",
+      "root_cause_cluster": "benchmark_ui_layering_inconsistency"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "The team enforces domain->core layering discipline explicitly (documented in benchmark_internal.h) but did not extend that same rule to the benchmark->ui progress-reporting path, likely because uiShowProgress() was the simplest way to thread live progress into the UI when benchmark.cpp was first written and no callback abstraction existed yet."
+    ],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "package_organization": {
+      "add": [
+        {
+          "header": "util/ dumping ground fully eliminated",
+          "description": "The previously-flagged util/ directory (card_format, card_identity, touch_calibration living outside their sole-consumer domain while bench_math/ui_geometry stayed in-domain) no longer exists; all three were folded into hardware/, its only consumer, making the pure/testable-helper placement rule consistent across benchmark/, hardware/, and ui/.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "core/ is a genuine acyclic shared kernel",
+          "description": "core/app_types.h and core/config.h have zero outgoing includes beyond each other and the standard library, and are the only two files with avg_fan_in >= 5 imported from every other domain (hardware, benchmark, ui) -- exactly the root-level-core exception the package_organization rubric calls out to skip.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Consistent private internal-header pattern",
+          "description": "benchmark/benchmark_internal.h and ui/display_ui_internal.h both serve the same role -- sharing helpers across sibling .cpp files in one folder without exposing them on the public header -- applied identically in both domains rather than one folder inventing its own convention.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "benchmark/ depends on ui/ for progress reporting",
+          "description": "benchmark.cpp includes ui/display_ui.h and calls uiShowProgress() directly from its I/O loop, the only coupling_matrix edge that does not point toward core/; this contradicts the one-directional layering the codebase documents for itself in benchmark_internal.h (hardware/ deliberately cannot depend on benchmark/). See issue benchmark_depends_on_ui.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

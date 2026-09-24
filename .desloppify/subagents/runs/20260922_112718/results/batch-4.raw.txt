@@ -1,0 +1,96 @@
+{
+  "batch": "error_consistency",
+  "batch_index": 4,
+  "assessments": {
+    "error_consistency": 89.0
+  },
+  "dimension_notes": {
+    "error_consistency": {
+      "evidence": [
+        "src/hardware/sd_card.cpp scanCard(): every SD I/O step (cardBegin, readCID, readCSD, readSector) uses the identical pattern of `if (!op()) { a.stage=...; a.errorCode=sd.sdErrorCode(); a.errorData=sd.sdErrorData(); Serial.printf(...); continue; }` -- one uniform failure shape across the whole function.",
+        "src/benchmark/spi_scale_benchmark.cpp runSpiScalingBenchmark() repeats the exact same errorCode/errorData capture pattern per speed point (SpiScalePoint), matching sd_card.cpp's convention even though it's a separate module.",
+        "All I/O-heavy functions (timedFileWrite, timedFileRead, verifyFile in benchmark.cpp; rawReadAtCurrentSpeed in benchmark_raw.cpp; scanCard) return bool and communicate results via an output struct/param -- no exceptions, no null-sentinel-vs-bool split anywhere in src/.",
+        "src/hardware/sd_card.cpp lines 234-246 inlines its own heap_caps_malloc + null-check + Serial.println for the qualification sector buffer, duplicating the same allocate-and-log-on-failure logic already centralized in allocateDmaBuffer() (src/benchmark/benchmark_raw.cpp lines 10-43, declared in src/benchmark/benchmark_internal.h) -- the sd_card.cpp copy logs less diagnostic detail (no buffer address) than the benchmark copy.",
+        "src/hardware/sd_card.cpp scanCard() lines 384-390: sd.volumeBegin() failure only sets info.volumeOk=false/info.fsType=0 -- unlike every other card-level failure in the same function, no sd.sdErrorCode()/sd.sdErrorData() is captured, so a 'not mounted' result carries zero diagnostic context (contrast with AttemptResult's rich errorCode/errorData for init/CID/CSD/read failures)."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "Duplicated DMA-allocation failure handling between src/hardware/sd_card.cpp and src/benchmark/benchmark_internal.h, and missing error-code capture on sd.volumeBegin() failure, are both isolated defects rather than a systemic mixed-strategy problem, so they keep the score just below the 90+ 'strong' band rather than pulling it into 'mixed'."
+    }
+  },
+  "dimension_judgment": {
+    "error_consistency": {
+      "dimension_character": "The codebase applies one disciplined error strategy end to end: hardware and benchmark I/O functions return bool and stash rich failure context (stage, sdErrorCode, sdErrorData) into caller-owned result structs, which the UI layer renders without ever needing exceptions or a second failure vocabulary. The only friction is two small, isolated spots -- a duplicated DMA-buffer-allocation failure path and a volume-mount failure that silently drops the diagnostic detail every sibling failure path captures.",
+      "score_rationale": "This sits just under the 90 'strong' anchor: a developer can predict how any SD I/O failure will surface (bool + populated struct + Serial log) almost everywhere, but the volumeBegin() error-code gap and the re-implemented allocateDmaBuffer logic in sd_card.cpp are real, if minor, breaks in that otherwise uniform pattern. Neither issue rises to the 80 'recurring friction' band because they are localized to two call sites, not spread across the codebase."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "error_consistency",
+      "identifier": "volume_mount_failure_no_error_code",
+      "summary": "sd.volumeBegin() failure captures no error code, unlike every other SD failure path in scanCard()",
+      "related_files": ["src/hardware/sd_card.cpp"],
+      "evidence": [
+        "Lines 384-390: `if (sd.volumeBegin()) { info.volumeOk = true; info.fsType = sd.fatType(); } else { info.volumeOk = false; info.fsType = 0; }` -- no sd.sdErrorCode()/sd.sdErrorData() capture.",
+        "Every other failure branch in the same function (InitFailed, CidFailed, CsdFailed, ReadFailed) captures errorCode and errorData into AttemptResult; volume-mount failure is the only I/O boundary in scanCard() that drops this context."
+      ],
+      "suggestion": "Add uint8_t volumeErrorCode/volumeErrorData fields to CardInfo (or reuse an AttemptResult-shaped field) and populate them from sd.sdErrorCode()/sd.sdErrorData() in the else branch, matching the pattern used for cardBegin/readCID/readCSD/readSector so a 'not mounted' result is diagnosable the same way an init/CID/CSD/read failure is.",
+      "confidence": "medium",
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "error_consistency",
+      "identifier": "duplicated_dma_alloc_error_handling",
+      "summary": "DMA buffer allocation failure is handled by two independently-maintained code paths instead of the shared helper",
+      "related_files": ["src/hardware/sd_card.cpp", "src/benchmark/benchmark_raw.cpp", "src/benchmark/benchmark_internal.h"],
+      "evidence": [
+        "src/hardware/sd_card.cpp lines 234-246 inlines heap_caps_malloc(SECTOR_SIZE, MALLOC_CAP_DMA|MALLOC_CAP_INTERNAL) with its own null-check and a bare 'DMA qualification buffer allocation failed.' log line.",
+        "src/benchmark/benchmark_raw.cpp lines 10-43 (allocateDmaBuffer, declared in benchmark_internal.h) does the identical allocation and null-check but logs a labeled message plus DMA/INTERNAL capability and buffer address -- richer diagnostics for the same failure mode.",
+        "Because benchmark/ already depends on hardware/ (not the reverse), sd_card.cpp cannot call allocateDmaBuffer() as currently placed without introducing a back-edge, which is presumably why the logic was duplicated instead of shared."
+      ],
+      "suggestion": "Move allocateDmaBuffer() (and its failure-logging pattern) into src/util/ (e.g. a new dma_buffer.h/.cpp, alongside the existing util/card_format.h, util/card_identity.h) so both src/hardware/sd_card.cpp and src/benchmark/*.cpp can call the same allocation-plus-diagnostics function -- consistent with the existing hardware->util and benchmark->util dependency direction already used elsewhere in the codebase.",
+      "confidence": "medium",
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "Two hand-rolled copies of the same DMA-allocation failure pattern arose because no shared util-level home existed for it at the time sd_card.cpp and benchmark_raw.cpp were each written, and the benchmark->hardware dependency direction blocks sd_card.cpp from calling the benchmark-side helper."
+    ],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "error_consistency": {
+      "add": [
+        {
+          "header": "Uniform bool + result-struct error strategy",
+          "description": "Every I/O-facing function in src/ (scanCard, timedFileWrite/Read, verifyFile, rawReadAtCurrentSpeed, runSpiScalingBenchmark) returns bool and reports failure detail through an output struct field rather than exceptions or sentinel values, so a developer can predict the failure shape of any new function before reading its body.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Rich SD error-code capture at hardware boundary",
+          "description": "sd.sdErrorCode()/sd.sdErrorData() are captured into AttemptResult/SpiScalePoint on every card-level failure (init/CID/CSD/read) in both sd_card.cpp and spi_scale_benchmark.cpp, and rendered on the diagnostics screen -- giving the same diagnostic depth to failures raised from two different modules.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "No exception usage anywhere in src/",
+          "description": "Consistent with an Arduino/ESP32 embedded target, the codebase never mixes exceptions with bool/struct error reporting -- there is exactly one error-propagation vocabulary in use throughout src/.",
+          "settled": true,
+          "positive": false
+        },
+        {
+          "header": "volumeBegin() failure lacks error-code capture",
+          "description": "Unlike card init/CID/CSD/read failures, a failed sd.volumeBegin() in scanCard() only flips info.volumeOk to false with no sdErrorCode()/sdErrorData() captured, leaving 'not mounted' failures less diagnosable than every sibling failure mode.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

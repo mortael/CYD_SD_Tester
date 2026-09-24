@@ -1,0 +1,81 @@
+{
+  "batch": "abstraction_fitness",
+  "batch_index": 6,
+  "assessments": {
+    "abstraction_fitness": 94.0
+  },
+  "dimension_notes": {
+    "abstraction_fitness": {
+      "evidence": [
+        "card_format.h/.cpp, card_identity.h/.cpp, bench_math.h/.cpp, ui_geometry.h/.cpp, and touch_calibration.h/.cpp are each narrow, single-purpose pure-logic modules explicitly documented as 'no hardware/Arduino dependency, safe to unit-test on host' — not a generic util dumping ground.",
+        "recordSdError() (hardware/sd_card.h) is called from 5 real sites across sd_card.cpp and spi_scale_benchmark.cpp, replacing what the historical review notes was previously duplicated error-logging logic — an abstraction earned by actual reuse.",
+        "allocateDmaBuffer() (hardware/sd_card.h) is shared by sd_card.cpp, benchmark.cpp, and spi_scale_benchmark.cpp instead of three separate implementations, per the (resolved) historical low_level_elegance/error_consistency findings.",
+        "benchmark.cpp's runChunkedIo()+ChunkIoFn function-pointer strategy is instantiated exactly three concrete ways (chunkWrite/chunkRead/chunkReadAndCrc) to remove the previously-flagged timedFileWrite/timedFileRead/verifyFile triplication; a real, bounded generalization rather than speculative machinery.",
+        "sd_card.h's doc comment explicitly contrasts scanCard()'s persistent-getter contract with runSpiScalingBenchmark()'s one-shot SpiScaleResult return, so a caller can't wrongly assume the two hardware-scan entry points share a shape — interface honesty enforced in the header itself.",
+        "display_ui_internal.h/benchmark_internal.h are deliberately-scoped 'not part of the public API' headers holding only what's shared across a module's own .cpp files (tft()/header()/lineRow(); rawReadAtCurrentSpeed()) — the public headers (display_ui.h, benchmark.h) stay minimal and consistent.",
+        "The codebase has zero classes with delegation, zero interface/protocol families, and zero facade/re-export-only modules (confirmed by reading all 29 src/ files) — it is a procedural free-function + static-file-scope-state design, so those specific anti-patterns structurally don't arise.",
+        "CardInfo (core/app_types.h) is a ~20-field struct threaded through many modules via a single const-ref getCardInfo() getter, but every field is a concrete piece of card-diagnostic domain state consumed directly by name (not a generic options/context bag) and access is uniform across ui/, benchmark/, and hardware/."
+      ],
+      "impact_scope": "codebase",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "No concrete defects found; the only residual gap is that the internal-header convention (display_ui_internal.h/benchmark_internal.h as 'private' cross-file headers) is an informal, unenforced substitute for real translation-unit encapsulation — nothing stops a future file from including an _internal.h it shouldn't, so the boundary relies on comment discipline rather than a compiler-checked mechanism. This is a minor, low-severity observation at the current codebase size (29 files), not something warranting a refactor.",
+      "sub_axes": {
+        "abstraction_leverage": 94.0,
+        "indirection_cost": 95.0,
+        "interface_honesty": 96.0,
+        "delegation_density": 100.0,
+        "definition_directness": 95.0,
+        "type_discipline": 90.0
+      }
+    }
+  },
+  "dimension_judgment": {
+    "abstraction_fitness": {
+      "dimension_character": "Every abstraction in this codebase — the pure/testable helper modules, the shared recordSdError()/allocateDmaBuffer()/runChunkedIo() helpers, and the internal-vs-public header split — traces back to a documented, multi-call-site need rather than speculative generality, and the prior review round's fixes (deduplicating DMA allocation, extracting the chunked-I/O loop, inlining the single-caller diagnostics.cpp module) removed the codebase's only real abstraction-fitness defects. What remains is a small, procedural C++ codebase with no classes, no interfaces, no facades, and no wide option bags to critique.",
+      "score_rationale": "This sits at the top of the scale (90=strong, 100=exemplary) because a developer would benefit from essentially every layer of indirection present and would not encounter pass-through wrappers, single-implementation interfaces, or leaky boundaries anywhere in the 29-file tree. It falls short of 100 only because the internal-header privacy convention is comment-enforced rather than structurally enforced, a genuine but very minor and currently harmless gap."
+    }
+  },
+  "issues": [],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "abstraction_fitness": {
+      "add": [
+        {
+          "header": "Pure-logic helpers isolated from hardware for testability",
+          "description": "card_format, card_identity, bench_math, ui_geometry, and touch_calibration are each kept as narrow, single-purpose header/cpp pairs with explicit 'no hardware/Arduino dependency, safe to unit-test on host' documentation, avoiding a generic-utils dumping ground while still being genuinely reused across hardware/, benchmark/, and ui/.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Shared helpers earn their abstraction via real multi-site reuse",
+          "description": "recordSdError(), allocateDmaBuffer(), and runChunkedIo() each replace concrete duplicated logic that existed before the prior review round's fixes (2-5 real call sites each), rather than being introduced speculatively.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Internal headers keep public module APIs minimal",
+          "description": "display_ui_internal.h and benchmark_internal.h hold only what's shared across a module's own .cpp files and are explicitly marked 'not part of the public API', so display_ui.h and benchmark.h stay small and consistent instead of exposing implementation details.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Header comments document contract asymmetry to prevent leaky assumptions",
+          "description": "sd_card.h explains, in the doc comment on scanCard(), why it returns a bool over persistent global state instead of a self-contained result like runSpiScalingBenchmark()'s SpiScaleResult, so callers can't mistakenly treat the two APIs as interchangeable.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "No classes, interfaces, or facades in this procedural codebase",
+          "description": "The project is built entirely from free functions and static file-scope state (a deliberate embedded-C++ module pattern), so delegation-heavy-class, one-implementation-interface, and facade/re-export anti-patterns have no surface to occur on.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

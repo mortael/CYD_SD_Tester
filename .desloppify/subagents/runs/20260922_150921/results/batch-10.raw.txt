@@ -1,0 +1,88 @@
+{
+  "batch": "test_strategy",
+  "batch_index": 10,
+  "assessments": {
+    "test_strategy": 89.0
+  },
+  "dimension_notes": {
+    "test_strategy": {
+      "evidence": [
+        "Every module the project itself classifies as hardware-independent has a matching Unity suite under test/: bench_math<->test_bench_math, card_format<->test_card_format, card_identity<->test_card_identity, touch_calibration<->test_touch_calibration, ui_geometry<->test_ui_geometry, app_types<->test_app_types.",
+        "platformio.ini's env:native build_src_filter compiles exactly those five .cpp files plus the test files, and .github/workflows/native-tests.yml runs `pio test -e native` on every push/pull_request, so the safety net is CI-enforced, not manual.",
+        "Tests assert concrete boundary/edge behavior rather than smoke-testing: 1 GiB boundary takes the GiB branch (test_card_format), half-open hit-test rectangle inclusivity (test_ui_geometry), out-of-range raw touch values clamp to screen edges and axes are swapped (test_touch_calibration), CRC32 matches whether computed in one pass or split across chunks (test_bench_math).",
+        "Zero snapshot tests, zero timing/ordering dependent assertions, zero mocking of internals -- every test calls only the public header API and checks a fully deterministic expected value.",
+        "src/ui/display_results.cpp contains scaleGraphMaxSpeed(), scalePointCoords(), and buildScaleSummary() -- pure float/int arithmetic and snprintf with no TFT_eSPI calls -- extracted during a prior low_level_elegance cleanup (splitting uiShowSpiScaleResult) but left inside the TFT-coupled file, so it is excluded from env:native and has no test coverage, unlike the structurally identical computeBarFillWidth()/hitTestRect() in ui_geometry.cpp which were extracted for exactly this host-testability reason.",
+        "cardTypeName() and fsName() are deliberately kept in the untestable hardware/sd_card.cpp (they need real SdFat type constants) rather than card_identity.cpp -- CLAUDE.md documents this as an intentional correctness-over-coverage tradeoff, not an oversight.",
+        "CLAUDE.md's Build & test commands and Architecture sections accurately name which files are tested and explicitly state hardware-coupled files (main.cpp, hardware/, benchmark/, ui/ TFT/SdFat/Arduino code) have no automated coverage and require flashing real hardware to validate -- the gap is documented honestly rather than hidden."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor",
+      "confidence": "high",
+      "issues_preventing_higher_score": "One concrete, fixable gap remains: display_results.cpp's SPI-scale-graph math helpers are pure and host-testable but untested, breaking the codebase's own established convention of extracting such logic into ui_geometry.h."
+    }
+  },
+  "dimension_judgment": {
+    "test_strategy": {
+      "dimension_character": "A developer working here can trust the test suite almost completely: it covers every module the codebase itself has identified as pure/host-testable, runs in CI on every push, and is written with real edge-case discipline (boundaries, clamping, chunk-splitting) rather than shallow smoke checks. The one blemish is a missed extraction -- newly-split pure math in display_results.cpp that mirrors the already-tested ui_geometry.cpp pattern but was left untested -- and the remaining hardware-coupled surface is untested by necessity and openly documented as such in CLAUDE.md rather than glossed over.",
+      "score_rationale": "This sits at the 'strong, minor gap' anchor (90) rather than 'solid but uneven' (80): there is no test-production coupling, no snapshot overuse, no fragility, and coverage of the testable surface is effectively complete and CI-enforced. It is pulled slightly below 90 by the single, concrete, high-confidence gap in display_results.cpp, which is exactly the kind of pure logic the project's own precedent says should be extracted and tested."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "test_strategy",
+      "identifier": "untested_pure_logic_in_display_results",
+      "summary": "Pure SPI-scale-graph math in display_results.cpp has zero test coverage despite having no hardware dependency",
+      "related_files": [
+        "src/ui/display_results.cpp",
+        "src/ui/ui_geometry.h",
+        "platformio.ini"
+      ],
+      "evidence": [
+        "scaleGraphMaxSpeed(), scalePointCoords(), and buildScaleSummary() in src/ui/display_results.cpp perform only float/int arithmetic and snprintf formatting -- none call tft() or any TFT_eSPI API -- yet the file is not in platformio.ini's env:native build_src_filter, so these functions only ever run on real hardware.",
+        "The same category of logic (hitTestRect, computeBarFillWidth) already lives in src/ui/ui_geometry.cpp specifically so it can be host-tested (test/test_ui_geometry/test_ui_geometry.cpp), so this is an inconsistent application of the codebase's own established pattern rather than a novel gap.",
+        "scalePointCoords() has non-trivial edge-case behavior worth locking down (count==1 divide-by-max(1,count-1), point.ok==false vs maxSpeed<=0.0f branches) that is currently unverified by any test."
+      ],
+      "suggestion": "Move scaleGraphMaxSpeed(), scalePointCoords(), and buildScaleSummary() into ui_geometry.h/.cpp (they take only primitives/SpiScaleResult, which is already hardware-free), add ui_geometry.cpp's existing env:native filter entry (no platformio.ini change needed since it's already included), and add Unity tests mirroring test_ui_geometry.cpp's style: count==1, no successful point (summary stays empty), and a failed point sitting at the graph floor.",
+      "confidence": "high",
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "The low_level_elegance fix that split uiShowSpiScaleResult() into named helpers optimized for readability/extraction within display_results.cpp but didn't cross-check against the project's parallel host-testability convention (ui_geometry.cpp), so a new pure-logic pocket was created without a matching test."
+    ],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "test_strategy": {
+      "add": [
+        {
+          "header": "Full test coverage of the project's own pure-logic surface",
+          "description": "Every module CLAUDE.md and platformio.ini classify as hardware-independent (bench_math, card_format, card_identity, touch_calibration, ui_geometry, app_types) has a matching Unity suite in test/, and .github/workflows/native-tests.yml runs pio test -e native on every push/PR, making this an enforced rather than aspirational safety net.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Tests assert real edge cases, not happy-path smoke checks",
+          "description": "Test suites verify boundary conditions (exact 1 GiB threshold, half-open hit-test rectangles, out-of-range touch clamping, chunk-split CRC32 equivalence, count==0 zero-max division), giving genuine regression protection rather than just confirming functions run.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Honest documentation of the untested hardware-coupled surface",
+          "description": "CLAUDE.md explicitly names which files have no automated coverage (main.cpp, hardware/ SPI/touch code, benchmark/ SdFat I/O, ui/ TFT_eSPI rendering) and states why (no mock Arduino/SdFat/TFT_eSPI layer exists), so the coverage gap is a known, calibrated tradeoff rather than a hidden one.",
+          "settled": true,
+          "positive": false
+        },
+        {
+          "header": "display_results.cpp pure-math helpers untested, breaking established extraction convention",
+          "description": "scaleGraphMaxSpeed()/scalePointCoords()/buildScaleSummary() are pure logic added during a prior refactor but left in the TFT-coupled file instead of ui_geometry.cpp, the codebase's own established home for such host-testable math -- see issue untested_pure_logic_in_display_results.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

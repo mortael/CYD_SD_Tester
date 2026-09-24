@@ -1,0 +1,68 @@
+{
+  "batch": "package_organization",
+  "batch_index": 15,
+  "assessments": {
+    "package_organization": 94.5
+  },
+  "dimension_notes": {
+    "package_organization": {
+      "evidence": [
+        "coupling_matrix shows a clean, acyclic dependency direction: src/ui -> src/hardware (9 edges), src/benchmark -> src/core (6), src/hardware -> src/core (6), src/benchmark -> src/hardware (5), src/ui -> src/core (4) -- no reciprocal or downstream->upstream edges anywhere",
+        "benchmark.cpp's #include list (Arduino.h, SdFat.h, ../core/config.h, ../core/app_types.h, bench_math.h, ../hardware/sd_card.h, ../hardware/card_format.h, benchmark_internal.h, benchmark.h) confirms it no longer includes ui/display_ui.h -- the previously flagged benchmark->ui upward dependency is gone, replaced by the BenchmarkProgressFn typedef in benchmark.h with main.cpp wiring uiShowProgress in as the callback",
+        "directory_profiles: src/core (2 files, avg_fan_in 9.5) is a small, clearly foundational package; src/hardware (10 files, avg_fan_in 2.7) and src/ui (9 files, avg_fan_in 1.8) sit just at/under the >10-file flat-overload threshold and each groups a single cohesive domain (SD/touch peripherals; screen rendering)",
+        "src/main.cpp is the only root-level file in src/ -- this is the PlatformIO/Arduino-mandated entry point location, not an organizational straggler",
+        "hardware/ mixes SD-card files (card_format.*, card_identity.*, sd_card.*) with touch files (touch.*, touch_calibration.*), but both are physical-peripheral concerns under one 'hardware' domain and none import upward into ui/ or benchmark/",
+        "ui/ splits display_ui.h's implementation across display_ui.cpp, display_diagnostics.cpp, display_progress.cpp, display_results.cpp, each including the shared display_ui.h + display_ui_internal.h -- a per-screen split of one logical component, mirrored by benchmark/'s benchmark_internal.h naming convention",
+        "test/ directories (test_app_types, test_bench_math, test_card_format, test_card_identity, test_touch_calibration, test_ui_geometry) map 1:1 to the production module they exercise"
+      ],
+      "impact_scope": "codebase",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "ui/ bundles four screen-specific .cpp files (home, diagnostics, progress, results) under one display_ui.h umbrella name rather than one header per screen, and hardware/ sits at exactly 10 files spanning two peripheral sub-concerns (SD card vs. touch) -- neither rises to a concrete defect but both are the reason this isn't a 100."
+    }
+  },
+  "dimension_judgment": {
+    "package_organization": {
+      "dimension_character": "The directory layout maps cleanly onto ownership: core/ holds shared types and config, hardware/ owns peripheral drivers, benchmark/ and ui/ each sit one layer above hardware/core with no cross-coupling between them, and main.cpp composes all four from the framework-mandated src/ root. The one structural violation on record -- benchmark.cpp reaching upward into ui/display_ui.h -- has been fixed via a BenchmarkProgressFn callback threaded from main.cpp, so the coupling_matrix now shows a fully acyclic, unidirectional dependency graph.",
+      "score_rationale": "This sits near the top of the scale (90=strong, minor friction only): a developer can predict where any given file lives and the coupling_matrix has zero reciprocal or downstream->upstream edges. It falls short of 100 only because hardware/ (10 files) and ui/ (9 files) are each brushing the flat-overload threshold with two loosely related sub-concerns bundled per directory, which is a mild, not a material, navigability cost."
+    }
+  },
+  "issues": [],
+  "retrospective": {
+    "root_causes": [
+      "The prior benchmark->ui violation stemmed from progress reporting being implemented as a direct UI call inside domain logic rather than being parameterized from the start; the fix (callback injection) is now the established pattern and should be the template for any future domain->presentation handoff."
+    ],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "package_organization": {
+      "add": [
+        {
+          "header": "Acyclic core->hardware->{ui,benchmark} layering",
+          "description": "coupling_matrix shows every cross-directory edge points from a higher layer to a lower one (ui/benchmark -> hardware -> core), with no reciprocal edges and no ui<->benchmark coupling -- this is the load-bearing structural property of the codebase and should be preserved as new features are added.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "benchmark/ no longer depends upward on ui/",
+          "description": "benchmark.cpp's #include list confirms ui/display_ui.h was removed; runQuickBenchmark() now takes a BenchmarkProgressFn callback (defined in benchmark.h) and main.cpp passes uiShowProgress in, so the domain layer stays presentation-agnostic. Any future long-running domain operation needing progress reporting should follow this same callback-injection pattern rather than including a ui header directly.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "main.cpp at src root is the PlatformIO entry point, not a straggler",
+          "description": "src/main.cpp is the only root-level file; it's the framework-mandated Arduino/PlatformIO build entry point (imports from all four subpackages to compose them), not evidence of missing organization.",
+          "settled": true,
+          "positive": false
+        },
+        {
+          "header": "ui/ splits one logical component (display_ui.h) across per-screen .cpp files",
+          "description": "display_ui.cpp, display_diagnostics.cpp, display_progress.cpp, and display_results.cpp each implement a subset of display_ui.h's declared functions and share display_ui_internal.h for private helpers (tft(), header(), lineRow()) -- a deliberate one-header/many-.cpp split for compilation-unit size, not accidental fragmentation. benchmark/ uses the same *_internal.h convention (benchmark_internal.h), giving both multi-file directories a consistent internal-header pattern.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

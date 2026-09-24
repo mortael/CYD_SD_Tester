@@ -1,0 +1,102 @@
+{
+  "batch": "naming_quality",
+  "batch_index": 5,
+  "assessments": {
+    "naming_quality": 91.5
+  },
+  "dimension_notes": {
+    "naming_quality": {
+      "evidence": [
+        "src/ui/display_ui.h: every public display function follows a strict ui<Verb><Noun> pattern (uiShowScanning, uiDrawHome, uiHitTestHome, uiDrawBenchMenu, uiHitTestBenchMenu, uiShowProgress, uiShowBenchmarkResult, uiShowSpiScaleResult, uiShowDiagnostics, uiWaitForTap) — a developer can predict a function's module and rough behavior from its name alone.",
+        "src/benchmark/bench_math.h / src/util/card_identity.h / src/util/card_format.h: pure helper names state exactly what they compute or return (crc32Update, throughputMBs, spiEfficiencyPercent, repeatedBufferCrc32, computeBarFillWidth, hitTestRect, fsName, attemptStageName, resolveVendor, identityCheckName) and each was verified against its implementation with no surprises.",
+        "src/core/app_types.h: struct fields bake units/outcome into the name (fileWriteMBs, rawReadMBs, activeSpiHz, filesystemDataBytes, preallocMs, efficiencyPercent, cardOk/volumeOk/cidOk/csdOk booleans) so a reader never has to guess scale or type from context.",
+        "No occurrences of generic verbs (process/handle/do/manage) found anywhere across the 31-file, ~3100-LOC src/ tree.",
+        "src/hardware/sd_card.cpp getSd()/getCardInfo()/getAttempts()/getAttemptCount() are genuine pure accessors with no hidden mutation, honoring the getX-implies-no-side-effect expectation.",
+        "src/ui/diagnostics.cpp defines showDiagnosticsScreen() (draw + block until tap) while src/ui/display_ui.h defines the very similarly named uiShowDiagnostics() (draw only, no wait) — the two names differ only in word order/prefix but represent different levels of the call stack and different blocking behavior, unlike every other screen where main.cpp explicitly pairs uiShowX(...) with uiWaitForTap().",
+        "src/hardware/sd_card.cpp printCardIdentity() prints far more than identity data (SPI clock, capacity, filesystem, full '=== CARD INFO ===' banner), so the name undersells its actual scope; low impact since it is a private static helper called from one place."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "The showDiagnosticsScreen/uiShowDiagnostics near-collision (different blocking semantics under near-identical names) and the printCardIdentity scope mismatch keep this just below a top-tier score; both are isolated and easy to fix without touching the otherwise disciplined naming system."
+    }
+  },
+  "dimension_judgment": {
+    "naming_quality": {
+      "dimension_character": "This is a small, disciplined codebase where naming carries real information: a strict ui-prefixed verb+noun convention for the display API, pure helpers whose names match their return values exactly, and struct fields that encode units so nothing is ambiguous. The only friction is a single pair of near-identical function names (showDiagnosticsScreen vs uiShowDiagnostics) that hide a real behavioral difference (blocking vs non-blocking), plus one internal helper whose name undersells what it prints.",
+      "score_rationale": "Per the naming_quality anchors, this sits at the 90 tier: names are mostly precise and a developer can trust them without reading implementations in nearly every case, but the diagnostics screen naming pair is exactly the kind of 'a few... names require a second look' friction the 90 anchor describes, and it is not a trivial nit since it conflates two functions with different blocking contracts. Nothing here approaches the pervasive ambiguity implied by the 80 or 60 anchors, so the score sits just above 90."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "naming_quality",
+      "identifier": "diagnostics_screen_name_collision",
+      "summary": "showDiagnosticsScreen() and uiShowDiagnostics() are near-identically named but have different blocking behavior",
+      "related_files": [
+        "src/ui/diagnostics.h",
+        "src/ui/diagnostics.cpp",
+        "src/ui/display_ui.h",
+        "src/main.cpp"
+      ],
+      "evidence": [
+        "src/ui/diagnostics.cpp: showDiagnosticsScreen() calls uiShowDiagnostics(...) then uiWaitForTap() internally — it draws AND blocks.",
+        "src/ui/display_ui.h: uiShowDiagnostics(...) only draws; every other screen (uiShowBenchmarkResult, uiShowSpiScaleResult) is explicitly followed by a separate uiWaitForTap() call in main.cpp, so the caller controls blocking everywhere except diagnostics.",
+        "src/main.cpp: case HomeAction::Diagnostics calls showDiagnosticsScreen() alone (no visible uiWaitForTap()), while case HomeAction::BenchmarkMenu's inner loop calls uiShowBenchmarkResult(...) followed by an explicit uiWaitForTap() — the same blocking effect is spelled two different ways depending on which near-identical name you use."
+      ],
+      "suggestion": "Rename the orchestrator to make the blocking behavior explicit and visually distinct from the ui* draw-only family, e.g. runDiagnosticsScreen() or showDiagnosticsAndWait(), so it can't be confused with uiShowDiagnostics() at a glance.",
+      "confidence": "medium",
+      "impact_scope": "module",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "naming_quality",
+      "identifier": "print_card_identity_scope_mismatch",
+      "summary": "printCardIdentity() prints the full card report, not just identity fields",
+      "related_files": [
+        "src/hardware/sd_card.cpp"
+      ],
+      "evidence": [
+        "printCardIdentity() (sd_card.cpp) prints an '=== CARD INFO ===' banner including SPI clock, card type, capacity, and filesystem/data-area size in addition to MID/vendor/OEM/product/revision/serial — i.e. it prints the whole scan result, not just 'identity' data."
+      ],
+      "suggestion": "Rename to printCardReport() or printScanSummary() to match the actual scope, or split identity-only fields into their own block if the narrower name is intended to stay accurate.",
+      "confidence": "low",
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "naming_quality": {
+      "add": [
+        {
+          "header": "Strict ui-prefixed verb+noun convention for display API",
+          "description": "Every public function in src/ui/display_ui.h follows ui<Verb><Noun> (uiShowX/uiDrawX/uiHitTestX/uiWaitForTap), letting callers in main.cpp predict module and behavior from the name alone. Consistent across every screen file (display_progress.cpp, display_results.cpp, display_diagnostics.cpp).",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Units and outcome encoded directly in field/function names",
+          "description": "Struct fields and return values consistently bake in units and success semantics (fileWriteMBs, activeSpiHz, filesystemDataBytes, preallocMs, efficiencyPercent, *Ok booleans in AttemptResult/CardInfo/BenchmarkResult), removing ambiguity about scale or type without needing to check implementations.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "No generic/vague verbs found in production code",
+          "description": "Across all 31 src/ files (~3100 LOC), no function uses process/handle/do/manage-style generic naming; even small helpers (resolveVendor, repeatedBufferCrc32, spiEfficiencyPercent) name their exact computation.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "showDiagnosticsScreen vs uiShowDiagnostics naming collision",
+          "description": "The only diagnostics-screen orchestrator bundles draw+wait under a name nearly identical to the draw-only uiShowDiagnostics(), breaking the otherwise consistent pattern where main.cpp explicitly pairs show+wait for every other screen.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

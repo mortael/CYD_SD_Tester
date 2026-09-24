@@ -1,0 +1,64 @@
+{
+  "batch": "dependency_health",
+  "batch_index": 7,
+  "assessments": {
+    "dependency_health": 97.0
+  },
+  "dimension_notes": {
+    "dependency_health": {
+      "evidence": [
+        "platformio.ini declares exactly two external libraries in lib_deps: bodmer/TFT_eSPI@2.5.43 and greiman/SdFat@2.3.1, both pinned to exact versions",
+        "TFT_eSPI is the sole display/rendering library, used consistently across all of src/ui/ (display_ui.cpp, display_ui_internal.cpp, display_progress.cpp, display_results.cpp, display_diagnostics.cpp) with no competing rendering library",
+        "SdFat is the sole SD/filesystem library, used consistently across src/hardware/sd_card.* and src/benchmark/*.cpp; no calls to Arduino's built-in SD.h/FS.h/SPIFFS/LittleFS exist anywhere in src/, so there is no duplicate filesystem-library overlap",
+        "No unused entries in lib_deps -- both declared libraries are exercised by real production code paths",
+        "SPI.h and esp_heap_caps.h are framework-provided (arduino-esp32/ESP-IDF core), not separate managed dependencies, and are used narrowly and appropriately in hardware/sd_card.cpp",
+        "The [env:native] host test environment uses PlatformIO's built-in Unity test_framework with no external lib_deps, appropriately excluded from this dimension per the dev-dependency skip rule",
+        "No package.json/library.json manifest exists at the repo root; platformio.ini is the single, authoritative dependency manifest, and .pio (the fetched-library cache) is gitignored so there's no stale/checked-in lock artifact to drift",
+        "[env:cyd]'s `platform = espressif32` has no version pin (unlike the two lib_deps entries), so the underlying ESP-IDF/Arduino-core toolchain version is not fixed the same way the two libraries are"
+      ],
+      "impact_scope": "codebase",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "The espressif32 platform toolchain itself is unpinned in platformio.ini (`platform = espressif32` with no version suffix), so a fresh checkout could build against a different ESP-IDF/Arduino-core version than the one SdFat@2.3.1/TFT_eSPI@2.5.43 were validated against, leaving one version-drift gap even though both external libraries are now pinned."
+    }
+  },
+  "dimension_judgment": {
+    "dependency_health": {
+      "dimension_character": "This is a minimal, purposeful dependency footprint typical of a small single-purpose embedded firmware project: exactly two external libraries, each owning a distinct, non-overlapping responsibility (TFT_eSPI for display, SdFat for the SD/filesystem work that is the app's entire reason for existing), both exercised extensively and pinned to exact versions. There is no duplication, no unused dependency, and no evidence of a heavy library pulled in for light use.",
+      "score_rationale": "This sits near the top of the anchor scale (90=strong, 100=exemplary): the previously-flagged unpinned-library issue is confirmed fixed in the current platformio.ini, and no new dependency-health defects were found across the two-library, well-scoped dependency set. The score stops just short of 100 only because the `espressif32` platform version itself remains unpinned, leaving a small residual version-drift risk of the same category as the already-fixed issue."
+    }
+  },
+  "issues": [],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "dependency_health": {
+      "add": [
+        {
+          "header": "Two-library dependency set, each with a single clear purpose",
+          "description": "platformio.ini's [env:cyd] declares only TFT_eSPI (display) and SdFat (SD/filesystem) -- no overlapping or redundant libraries exist, and Arduino's built-in SD.h/FS.h are never used alongside SdFat, so there is no split-purpose duplication to reconcile.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "No dependency manifest drift or stale lock artifacts",
+          "description": "platformio.ini is the only dependency manifest in the repo (no package.json/library.json at root); the fetched-library cache under .pio/ is gitignored, so there is nothing checked in that could go stale relative to the manifest.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Platform toolchain version left unpinned",
+          "description": "[env:cyd]'s `platform = espressif32` has no version suffix, unlike the two lib_deps entries which were pinned in a prior fix round; this is the one remaining place a fresh build could silently pick up a different toolchain.",
+          "settled": false,
+          "positive": false
+        }
+      ],
+      "settle": [
+        "TFT_eSPI and SdFat version pinning"
+      ]
+    }
+  }
+}

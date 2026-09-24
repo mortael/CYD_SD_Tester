@@ -1,0 +1,123 @@
+{
+  "batch": "error_consistency",
+  "batch_index": 4,
+  "assessments": {
+    "error_consistency": 90.0
+  },
+  "dimension_notes": {
+    "error_consistency": {
+      "evidence": [
+        "src/hardware/sd_card.cpp: recordSdError(sd, errorCode&, errorData&, label) is the single site that calls sd.sdErrorCode()/sdErrorData() in the whole codebase (verified via grep) — every failure path now routes through it.",
+        "src/benchmark/benchmark.cpp: runFileBenchmarkSequence() uses early returns after preAllocate/seekSet/write/read/seek/verify, calling recordSdError() on every failing step (PREALLOCATE, three SEEKs, and the two timedFile*/verifyFile calls which record internally) — no step is left uncaptured.",
+        "src/benchmark/benchmark_raw.cpp + benchmark_internal.h: rawReadAtCurrentSpeed() now takes uint8_t& errorCode/errorData out-params and both callers (benchmark.cpp's runQuickBenchmark, spi_scale_benchmark.cpp's runSpiScalingBenchmark) consume the precise per-LBA error directly instead of re-deriving a coarser one.",
+        "src/ui/ui_geometry.cpp buildScaleSummary(): on no qualifying speed, falls back to `%luMHz FAILED %02X/%02X` using points[0] (which is also the fastest attempted speed, since SPI_SCALE_SPEEDS in config.h is defined descending 40/20/10/4/1MHz) — verified against test/test_ui_geometry/test_ui_geometry.cpp which asserts exactly this string.",
+        "src/ui/ui_geometry.h lines 58-59 doc comment for buildScaleSummary() still reads 'First successful point's summary line, or an empty string if none of the speeds qualified' — this is now false; the function returns a non-empty FAILED line when nothing qualifies (count>0), contradicting its own header contract.",
+        "src/benchmark/benchmark.cpp runFileBenchmarkSequence(): all three `if (!file.seekSet(0))` failure branches pass the identical literal label \"SEEK\" to recordSdError(), unlike every sibling call site in the same function (PREALLOCATE, File write, File read, CRC readback) and unlike rawReadAtCurrentSpeed()'s per-LBA-specific label — a developer reading Serial output alone cannot tell which of the three seek points failed.",
+        "Four structurally identical 'record + later surface' error fields (AttemptResult.errorCode, CardInfo.volumeErrorCode, BenchmarkResult.ioErrorCode, SpiScalePoint.errorCode) are surfaced through two different channels: AttemptResult (display_diagnostics.cpp) and, as of this fix, SpiScalePoint (ui_geometry.cpp buildScaleSummary -> uiShowSpiScaleResult) reach the on-device TFT screen, while CardInfo.volumeErrorCode (sd_card.cpp printCardReport) and BenchmarkResult.ioErrorCode (benchmark.cpp printBenchmarkResult) are Serial-log only — confirmed uiShowBenchmarkResult() and uiShowDiagnostics() never reference ioErrorCode/volumeErrorCode. Since this is a handheld field tool (Serial is a `pio device monitor` dev-time channel per CLAUDE.md, not part of normal operation), the two Serial-only fields are effectively unread by an end user even though they are 'read back' in source.",
+        "No exceptions, Result types, or null-return error strategies exist anywhere in src/ — every fallible operation uses the bool-return + reference out-param convention (readTouch, timedFileWrite/Read, verifyFile, rawReadAtCurrentSpeed, runChunkedIo), which is applied with no exceptions found."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "A stale doc comment on buildScaleSummary() contradicts its own newly-added fallback behavior; the three seekSet() failure branches in the new runFileBenchmarkSequence() all share one generic 'SEEK' label instead of stage-specific labels; and two of four structurally identical SD-error fields (CardInfo.volumeErrorCode, BenchmarkResult.ioErrorCode) still only reach Serial output rather than the on-device screen that the other two now use."
+    }
+  },
+  "dimension_judgment": {
+    "error_consistency": {
+      "dimension_character": "Error handling in this codebase is unusually disciplined for its size: a single recordSdError() helper is the only caller of the underlying SdFat error accessors, every I/O step in the benchmark sequence now captures a code via early-return with no silent gaps, and the whole codebase applies one uniform bool+out-param failure convention with zero exceptions or mixed strategies. The remaining friction is cosmetic rather than structural: a doc comment that didn't get updated alongside the behavior it describes, a trio of seek failures sharing one indistinct label, and a channel split (screen vs Serial-only) between otherwise-identical error fields that predates this fix and wasn't the fix's job to resolve.",
+      "score_rationale": "This sits solidly in the 'strong, minor friction' band (90) rather than exemplary (100): the core mechanism (recordSdError, out-params, early-return sequencing) is exactly what a developer would want and is applied with no exceptions found anywhere in src/, but a stale contract comment and a lost-context label are concrete, fixable defects, and the Serial-vs-screen asymmetry means a developer can't yet fully predict where a given error will surface without checking each call site."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "error_consistency",
+      "identifier": "stale_buildscalesummary_doc_comment",
+      "summary": "buildScaleSummary()'s header doc still says it returns an empty string when nothing qualifies, but it now returns a FAILED/errorCode line",
+      "related_files": ["src/ui/ui_geometry.h", "src/ui/ui_geometry.cpp", "test/test_ui_geometry/test_ui_geometry.cpp"],
+      "evidence": [
+        "src/ui/ui_geometry.h lines 58-59: '// First successful point's summary line, or an empty string if none of the speeds qualified.'",
+        "src/ui/ui_geometry.cpp buildScaleSummary(): when no point.ok is true and result.count > 0, it snprintf's '%luMHz FAILED %02X/%02X' into out — non-empty.",
+        "test/test_ui_geometry/test_ui_geometry.cpp asserts TEST_ASSERT_EQUAL_STRING(\"10MHz FAILED 0A/0B\", summary) for the all-failed case, confirming the doc comment is now wrong."
+      ],
+      "suggestion": "Update the doc comment on buildScaleSummary() in ui_geometry.h to describe both branches, e.g.: 'First successful point's summary line; if none qualified, the first (fastest) attempted point's SD error code/data instead; empty string only when count == 0.'",
+      "confidence": "high",
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "error_consistency",
+      "identifier": "seek_failures_share_generic_label",
+      "summary": "runFileBenchmarkSequence()'s three seekSet(0) failure branches all record the identical label \"SEEK\", losing which of the three seek points failed",
+      "related_files": ["src/benchmark/benchmark.cpp"],
+      "evidence": [
+        "Three separate `if (!file.seekSet(0)) { recordSdError(sd, result.ioErrorCode, result.ioErrorData, \"SEEK\"); return; }` blocks in runFileBenchmarkSequence() (before write, before read, before verify) all pass the exact same literal \"SEEK\".",
+        "Every other recordSdError() call site in the same function/file uses a distinguishing label (\"PREALLOCATE\", \"OPEN\", \"File write\"/\"File read\"/\"CRC readback\" via runChunkedIo's stage param, \"RAW READ LBA %lu\" in rawReadAtCurrentSpeed)."
+      ],
+      "suggestion": "Give each seekSet(0) call its own label, e.g. \"SEEK pre-write\", \"SEEK pre-read\", \"SEEK pre-verify\", so the Serial log line alone identifies which stage failed without needing to correlate against surrounding output.",
+      "confidence": "low",
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "error_consistency",
+      "identifier": "error_field_surfacing_channel_asymmetry",
+      "summary": "CardInfo.volumeErrorCode and BenchmarkResult.ioErrorCode are Serial-only while the structurally identical AttemptResult.errorCode and SpiScalePoint.errorCode now reach the on-device TFT screen",
+      "related_files": [
+        "src/hardware/sd_card.cpp",
+        "src/benchmark/benchmark.cpp",
+        "src/ui/display_diagnostics.cpp",
+        "src/ui/ui_geometry.cpp",
+        "src/ui/display_results.cpp"
+      ],
+      "evidence": [
+        "display_diagnostics.cpp's uiShowDiagnostics() prints a.errorCode/a.errorData per AttemptResult on the TFT screen, but never references info.volumeErrorCode/volumeErrorData anywhere in the file.",
+        "sd_card.cpp's printCardReport() (Serial.printf-only) is the sole place volumeErrorCode/volumeErrorData are read.",
+        "display_results.cpp's uiShowBenchmarkResult() (the TFT screen shown after a quick benchmark) never references result.ioErrorCode/ioErrorData; only benchmark.cpp's printBenchmarkResult() (Serial-only) reads them.",
+        "ui_geometry.cpp's buildScaleSummary(), by contrast, now surfaces SpiScalePoint.errorCode/errorData directly on the TFT scale-result screen (this round's fix) — the same 'record on failure, surface later' pattern applied to a different field, but on the primary UI channel instead of Serial.",
+        "CLAUDE.md documents Serial access as a `pio device monitor` dev-time workflow, not part of normal standalone operation of this handheld diagnostic tool, so the Serial-only fields are effectively invisible to an end user in the field."
+      ],
+      "suggestion": "Either add the same on-screen surfacing this round gave SpiScalePoint to CardInfo.volumeErrorCode (e.g. a line in uiShowDiagnostics() alongside the identity check) and BenchmarkResult.ioErrorCode (e.g. append to the footer line in uiShowBenchmarkResult()), or explicitly document why those two are intentionally Serial-only so the asymmetry reads as a decision rather than an oversight.",
+      "confidence": "low",
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "Each error_consistency fix round has been scoped to whichever specific field/function was flagged rather than to the whole 'record SD error, then surface it somewhere a user can see' pattern, so surfacing has organically ended up on two different channels (Serial vs TFT) across otherwise-identical fields.",
+      "Doc comments on pure/testable helpers (ui_geometry.*) are being hand-maintained alongside behavior changes and occasionally drift, as seen with buildScaleSummary()'s now-stale 'empty string' claim."
+    ],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "error_consistency": {
+      "add": [
+        {
+          "header": "Single recordSdError() choke point for all SD failures",
+          "description": "sd.sdErrorCode()/sd.sdErrorData() are called from exactly one place (recordSdError() in sd_card.cpp) across the entire src/ tree; every SD failure path (init/cid/csd/read attempts, volume mount, benchmark preallocate/seek/write/read/verify, raw sector reads, SPI-scale init/read) now goes through it with a distinguishing label, eliminating the hand-rolled duplicate logging that existed in earlier rounds.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Uniform bool + out-param failure convention",
+          "description": "Every fallible operation in src/ (readTouch, timedFileWrite/timedFileRead/verifyFile, runChunkedIo, rawReadAtCurrentSpeed, scanCard) returns bool success/failure and writes results/errors into reference out-parameters. No exceptions, Result types, or null-return error styles appear anywhere in the codebase, so a developer can rely on this single pattern everywhere.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "runFileBenchmarkSequence() early-return extraction closes prior gaps",
+          "description": "The former nested if/else chain in runQuickBenchmark() was extracted into runFileBenchmarkSequence() with early returns; every step (preallocate, each seek, write, read, verify) now records an SD error on failure and returns immediately, so result.ioErrorCode always reflects the actual failing step rather than being left at its default on some paths.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Error field surfacing channel is inconsistent across identical fields",
+          "description": "AttemptResult.errorCode and (as of this round) SpiScalePoint.errorCode/errorData are shown on the TFT screen the user actually looks at, while CardInfo.volumeErrorCode and BenchmarkResult.ioErrorCode are Serial.printf-only and thus invisible during normal (non-USB-tethered) use of this handheld tool. Each round's fix has closed the 'never read back at all' gap for one field without normalizing which channel it reads back through.",
+          "settled": false,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

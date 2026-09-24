@@ -1,0 +1,67 @@
+{
+  "batch": "naming_quality",
+  "batch_index": 5,
+  "assessments": {
+    "naming_quality": 95.5
+  },
+  "dimension_notes": {
+    "naming_quality": {
+      "evidence": [
+        "readTouch()'s params in src/hardware/touch.h and touch.cpp are now screenX/screenY, matching mapTouchToScreen()'s naming exactly (prior sx/sy inconsistency confirmed resolved).",
+        "ui/ files use a single, predictable verb-prefix scheme: uiDrawX for full-screen paints (uiDrawHome, uiDrawBenchMenu), uiHitTestX for hit-testing (uiHitTestHome, uiHitTestBenchMenu), uiShowX for screen transitions (uiShowScanning, uiShowProgress, uiShowBenchmarkResult, uiShowSpiScaleResult, uiShowDiagnostics) - a developer can predict a new function's behavior from its prefix alone.",
+        "Getter functions (getSd(), getCardInfo(), getAttempts(), getAttemptCount() in src/hardware/sd_card.h/.cpp) are verified pure accessors returning references/pointers to static state with zero mutation in their bodies - no getX-that-mutates mismatch found.",
+        "Domain abbreviations (hz, spi, crc, cid, csd, fs, mid) are SD-card/electrical-domain standard terms used identically everywhere they appear (e.g. cid.mid feeds resolveVendor(uint8_t mid), csd_t/cid_t match SdFat's own register-naming), not idiosyncratic shorthand.",
+        "Formatting/compute helper names precisely match their bodies: formatHumanBytes/formatSpiClock (src/hardware/card_format.cpp) only format, computeBarFillWidth/scaleGraphMaxSpeed/scalePointCoords/buildScaleSummary (src/ui/ui_geometry.cpp) only compute or build the stated value - no hidden side effects behind a compute/format/build verb.",
+        "printCardReport() (src/hardware/sd_card.cpp) - confirmed already renamed from printCardIdentity() and now matches its actual full-report scope (SPI, type, capacity, identity fields, filesystem, mount errors).",
+        "The showDiagnosticsScreen()/uiShowDiagnostics() naming collision no longer exists - main.cpp now has a single static showDiagnostics() wrapper calling uiShowDiagnostics()+uiWaitForTap(), with no second confusingly-similar name left in the codebase.",
+        "mapTouchToScreen()'s intentional X/Y axis swap (screenX assigned from rawY, screenY from rawX in touch_calibration.cpp) is explicitly documented in the header comment, so it reads as a deliberate hardware-mounting fact rather than a naming bug."
+      ],
+      "impact_scope": "codebase",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "No confirmed naming defects remain after this pass; the score is held just short of 100 only because a handful of very short, purely local names (e.g. the single static `info`/`sd` module globals in sd_card.cpp, the loop-scoped `a` for AttemptResult in scanCard()) require a glance at their declaration to place fully - low-stakes, not misleading, and arguably within the project's established terse-local-variable convention."
+    }
+  },
+  "dimension_judgment": {
+    "naming_quality": {
+      "dimension_character": "Naming across the codebase is precise and predictable: prefix families (ui*, format*, compute*, build*) map cleanly to behavior, domain abbreviations are drawn from the SD-card/electrical spec itself and applied consistently, and getters are verified side-effect-free. All three previously identified naming defects (readTouch's sx/sy, the showDiagnosticsScreen/uiShowDiagnostics collision, and printCardIdentity's scope mismatch) are confirmed fixed in the current code with no regressions or partial fixes found.",
+      "score_rationale": "This sits at the top of the anchor scale (90 = mostly precise with isolated second-looks, 100 = exemplary): a full pass through src/ and test/ turned up zero new name/behavior mismatches, generic verbs, or vocabulary drift, and the historical fixes are cleanly and completely applied. The score is not a full 100 only because a few very short, file-local variable names require the reader to check their declaration - a genuinely minor, low-confidence nit rather than a defect worth reporting."
+    }
+  },
+  "issues": [],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "naming_quality": {
+      "add": [
+        {
+          "header": "ui* prefix family maps directly to screen behavior",
+          "description": "Every public function in src/ui/display_ui.h follows a strict verb-prefix scheme (uiDrawX for full paints, uiHitTestX for hit-testing, uiShowX for screen transitions), so a reader can predict a new function's behavior from its name alone without checking the body.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Domain abbreviations trace to the SD-card spec itself",
+          "description": "hz, spi, crc, cid, csd, fs, and mid are not project-invented shorthand - they mirror SdFat's own field/register names (cid_t.mid, csd_t) and standard SD terminology, so the abbreviations are self-documenting to anyone familiar with the hardware domain and are used identically at every call site.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Getter functions verified free of side effects",
+          "description": "getSd(), getCardInfo(), getAttempts(), and getAttemptCount() in hardware/sd_card.h/.cpp were checked and each does nothing but return a reference/pointer to already-computed static state - no getX-that-mutates naming/behavior mismatch exists in the codebase.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "All three prior naming_quality findings confirmed fixed",
+          "description": "readTouch()'s screenX/screenY rename, the showDiagnosticsScreen()/uiShowDiagnostics() collision (resolved by inlining into main.cpp's showDiagnostics()), and printCardIdentity() -> printCardReport() were each re-verified directly in the current source with no partial or regressed fixes.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

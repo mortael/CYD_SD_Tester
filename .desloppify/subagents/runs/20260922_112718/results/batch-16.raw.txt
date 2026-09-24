@@ -1,0 +1,104 @@
+{
+  "batch": "initialization_coupling",
+  "batch_index": 16,
+  "assessments": {
+    "initialization_coupling": 89.0
+  },
+  "dimension_notes": {
+    "initialization_coupling": {
+      "evidence": [
+        "src/main.cpp setup() sequences initDisplay(), initTouch(), initSdHardware(), then rescan() in one explicit, linear block — the entire boot order is visible in one place with no hidden ordering requirements.",
+        "src/ui/display_ui_internal.cpp tft() returns a function-local static TFT_eSPI instance (Meyers singleton), so the display object is constructed lazily on first use rather than at static-init time — this sidesteps the C++ static-initialization-order fiasco entirely.",
+        "src/hardware/sd_card.cpp keeps sd, sdSPI, info, attempts, cid, csd as file-scope statics but exposes them only via getSd()/getCardInfo()/getAttempts() getters declared in sd_card.h — no other translation unit reaches in via extern globals.",
+        "src/core/app_types.h CardInfo/AttemptResult/BenchmarkResult/SpiScaleResult all have safe zero/false default member initializers, so reading getCardInfo() or getAttempts() before scanCard() has run returns an inert, non-garbage value rather than undefined state.",
+        "src/core/config.h contains only static constexpr compile-time constants (pins, sizes, speeds) — no environment-variable or runtime reads at module/import scope.",
+        "src/benchmark/spi_scale_benchmark.cpp mutates the shared SdFs singleton by cycling sd.end()/sd.cardBegin() across multiple SPI speeds, then calls scanCard() again at the end specifically to restore the qualified state (comment: \"Scaling changes the active SdFat card state. Restore normal qualification/mount afterwards.\") — correctness after this function depends on that restore call being present and correct, not on any type-enforced invariant.",
+        "src/benchmark/benchmark_raw.cpp rawReadAtCurrentSpeed() dereferences sd.card()->sectorCount() without checking that sd.card() is non-null; the function's only implicit precondition is that a prior successful cardBegin() (via scanCard()) has already happened — true in the current call graph (menu is only reachable after a successful rescan()) but not enforced at the call site."
+      ],
+      "impact_scope": "subsystem",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "Shared mutable SdFs singleton state is restored across module boundaries by convention (spi_scale_benchmark.cpp's trailing scanCard() call) rather than by an enforced invariant, and one raw-I/O helper assumes prior successful card initialization without checking for it."
+    }
+  },
+  "dimension_judgment": {
+    "initialization_coupling": {
+      "dimension_character": "Boot order in this codebase is a non-issue in practice: setup() in main.cpp is the single, explicit place where hardware modules are brought up in sequence, hardware singletons are hidden behind accessor functions instead of raw externs, and the TFT instance uses a lazy Meyers singleton that removes any risk of static-initialization-order problems. The one recurring theme is that the shared SdFs/CardInfo singleton is mutated from three different benchmark files, and keeping that state coherent across calls (e.g. restoring the qualified SPI speed after the scaling benchmark) relies on a code comment and a trailing scanCard() call rather than any enforced contract.",
+      "score_rationale": "This sits near the top of the scale (anchor 90 = strong, minor friction only) because there are no import-time side effects, no env-var reads, no circular init, and the encapsulation of hardware singletons behind getters/lazy-init functions is exactly the pattern the rubric rewards. It is held just below 90 because the cross-module SD state restoration is convention-enforced rather than structurally guaranteed, and one raw I/O helper has an unchecked implicit precondition on prior initialization, both of which a developer could silently violate when adding new benchmark code."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "initialization_coupling",
+      "identifier": "sd_state_restore_by_convention",
+      "summary": "SPI-scaling benchmark leaves shared SdFs singleton in a scaled state unless its trailing scanCard() call is preserved",
+      "related_files": [
+        "src/benchmark/spi_scale_benchmark.cpp",
+        "src/hardware/sd_card.cpp"
+      ],
+      "evidence": [
+        "runSpiScalingBenchmark() in spi_scale_benchmark.cpp calls sd.end()/sd.cardBegin() at several SPI speeds, then relies on a final scanCard() call (with only a comment explaining why) to put the shared sd/info singleton back into its normal qualified state.",
+        "Any future caller that touches the SdFs singleton directly (bypassing scanCard()) between scaling passes, or a future edit that removes/reorders the trailing scanCard() call, would leave getCardInfo()/getSd() reflecting a stale scaled-speed state with no compiler or runtime check to catch it."
+      ],
+      "suggestion": "Keep the fix local and simple: rename scanCard()'s role at the end of runSpiScalingBenchmark() to make the restoration explicit at the call site (e.g. a one-line comment already exists; strengthen it by asserting info.cardOk after the restore call, or return a bool from runSpiScalingBenchmark() reflecting whether restore succeeded) rather than introducing a new abstraction layer or session/guard object.",
+      "confidence": "medium",
+      "impact_scope": "subsystem",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "initialization_coupling",
+      "identifier": "raw_read_missing_card_null_check",
+      "summary": "rawReadAtCurrentSpeed() dereferences sd.card() without checking it succeeded a prior cardBegin()",
+      "related_files": [
+        "src/benchmark/benchmark_raw.cpp"
+      ],
+      "evidence": [
+        "rawReadAtCurrentSpeed() (src/benchmark/benchmark_raw.cpp lines 50-54) calls sd.card()->sectorCount() immediately, with no check that sd.card() returned a valid pointer.",
+        "The function is only reachable today after a successful scanCard()/cardBegin() elsewhere in the call graph, so the precondition currently holds, but it is not verified at the point of use."
+      ],
+      "suggestion": "Add a direct guard at the top of rawReadAtCurrentSpeed(): if (!sd.card()) return false; — a one-line, local check that makes the function safe to call independent of caller discipline, without adding any new abstraction.",
+      "confidence": "low",
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "Hardware singletons (SdFs, SPIClass) are intentionally shared across the SD-hardware and benchmark modules, which is standard for embedded firmware with one physical SD slot; the residual friction is that restoring shared state after a destructive operation (SPI scaling) is convention-based rather than structurally guaranteed."
+    ],
+    "likely_symptoms": [
+      "raw_read_missing_card_null_check"
+    ],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "initialization_coupling": {
+      "add": [
+        {
+          "header": "Boot sequence centralized in main.cpp setup()",
+          "description": "initDisplay(), initTouch(), initSdHardware(), then rescan() run in one explicit, linear block in setup() — there is exactly one place a developer needs to look to understand hardware bring-up order, and no module depends on being imported/linked in a particular order.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "TFT singleton is a lazy Meyers singleton",
+          "description": "display_ui_internal.cpp's tft() returns a function-local static TFT_eSPI instance, constructed on first call rather than at global static-init time, which eliminates any static-initialization-order risk between translation units.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Hardware singletons only reachable via accessor functions",
+          "description": "sd, sdSPI, info, attempts, cid, csd in sd_card.cpp are file-scope statics never exposed as externs; every consumer goes through getSd()/getCardInfo()/getAttempts(), keeping the coupling explicit and centralized in sd_card.h's contract.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "SD singleton restore relies on convention, not enforcement",
+          "description": "runSpiScalingBenchmark() mutates the shared SdFs state across several SPI speeds and depends on its own trailing scanCard() call (explained only by a comment) to restore normal qualified state; nothing in the type system or call structure would catch a future edit that dropped or reordered that restore step.",
+          "settled": false,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

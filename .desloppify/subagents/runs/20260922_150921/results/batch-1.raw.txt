@@ -1,0 +1,87 @@
+{
+  "batch": "cross_module_architecture",
+  "batch_index": 1,
+  "assessments": {
+    "cross_module_architecture": 91.0
+  },
+  "dimension_notes": {
+    "cross_module_architecture": {
+      "evidence": [
+        "Coupling matrix (holistic_context.structure.coupling_matrix) shows a clean, mostly one-directional dependency graph: src/ui -> src/hardware (9), src/hardware -> src/core (6), src/benchmark -> src/core (6), src/benchmark -> src/hardware (5), src/ui -> src/core (3) -- core is the base layer, hardware sits above it, benchmark and ui sit above hardware, with no core-> or hardware->benchmark edges anywhere in the tree.",
+        "src/benchmark/benchmark_internal.h explicitly documents the intended direction: 'DMA buffer allocation is shared from ../hardware/sd_card.h instead, since hardware/ can't depend back on benchmark/' -- an architectural rule stated in code and honored by every hardware/*.cpp file (verified: hardware/sd_card.cpp, card_format.cpp, card_identity.cpp, touch.cpp only #include core/ and SdFat/Arduino headers, never benchmark/ or ui/).",
+        "The one exception is src/benchmark/benchmark.cpp, which #include \"../ui/display_ui.h\" and calls uiShowProgress() directly inside runChunkedIo() (benchmark.cpp lines 9, 98, 139, 361, 429) to render live progress during long file write/read/verify passes -- a benchmark-layer (logic) module reaching directly into the ui (presentation) layer, the only benchmark->ui edge in the whole coupling matrix and inconsistent with the hardware/ dependency rule stated one file over.",
+        "Sibling benchmark files do not do this: src/benchmark/spi_scale_benchmark.cpp and src/benchmark/benchmark_raw.cpp (which implement runSpiScalingBenchmark()/rawReadAtCurrentSpeed()) never include ui/ headers, so the ui coupling is specific to one file/function family rather than the whole benchmark subsystem.",
+        "platformio.ini's [env:native] build_src_filter whitelists exactly the hardware/Arduino-independent files (bench_math.cpp, card_format.cpp, card_identity.cpp, touch_calibration.cpp, ui_geometry.cpp), and each corresponding header carries a matching comment ('Pure ... no hardware/Arduino dependency, safe to unit-test on host') -- the documented pure/impure boundary matches the actual native-test build configuration rather than drifting from it.",
+        "src/hardware/sd_card.h documents, in a multi-paragraph comment on scanCard(), exactly why the module exposes persistent global state (info, attempts[], sd) through getters (getCardInfo()/getAttempts()/getSd()) rather than return values, and contrasts this explicitly with runSpiScalingBenchmark()'s one-shot SpiScaleResult return -- a deliberate, reasoned single-hardware-instance singleton pattern rather than incidental shared mutable state.",
+        "No leftover compatibility shims, deprecated symbols, or migration residue were found (grep for DEPRECATED/TODO/FIXME/legacy/shim across src/ returned nothing); the prior util/ directory noted in project history has been fully folded into hardware/, not left as a partial migration.",
+        "src/core/config.h (10 importers) and src/core/app_types.h (8 importers) are the most-imported files, but both are pure constant/value-type definitions with no logic of their own (config.h is pin/buffer/timing constants, app_types.h is plain structs/enums) -- high fan-in here is the expected shape of a shared base-layer header in an embedded project, not a hub module concentrating behavior."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor",
+      "confidence": "medium",
+      "issues_preventing_higher_score": "The single benchmark.cpp -> ui/display_ui.h coupling for live progress reporting is a real, isolated inversion of the codebase's otherwise-enforced lower-never-depends-on-upper rule; it keeps the score just below the 'mostly coherent, isolated drift' ceiling.",
+      "sub_axes": {}
+    }
+  },
+  "dimension_judgment": {
+    "cross_module_architecture": {
+      "dimension_character": "The dependency graph is deliberately layered (core under hardware under benchmark/ui) and that direction is both stated in code comments and verified by grep across every hardware/*.cpp file; the pure-vs-hardware-dependent split is enforced by the native test build filter rather than just claimed in prose. The one blemish is benchmark.cpp calling directly into ui/display_ui.h for progress rendering, a single-file exception to the pattern its own sibling files and its own neighboring header's stated rule both avoid.",
+      "score_rationale": "This sits at the 90 anchor ('mostly coherent with isolated boundary drift') rather than higher: there are no cycles, no god-module behavior concentration, and the documented pure/impure and layering contracts hold up against actual includes, but the benchmark->ui edge is a genuine, unaddressed direction violation even though it is confined to one function family in one file. It does not reach the 80 anchor because it is a single, well-contained instance rather than a recurring pattern across modules."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "cross_module_architecture",
+      "identifier": "benchmark_calls_ui_directly",
+      "summary": "benchmark.cpp's runChunkedIo() calls uiShowProgress() directly, coupling the benchmark logic layer to the ui presentation layer",
+      "related_files": [
+        "src/benchmark/benchmark.cpp",
+        "src/ui/display_ui.h"
+      ],
+      "evidence": [
+        "src/benchmark/benchmark.cpp:9 includes \"../ui/display_ui.h\", and runChunkedIo() calls uiShowProgress(title, stage, done, BENCH_TEST_SIZE, ...) at lines 98, 139 (plus two more call sites later in the file at ~361/429) to render live progress mid-loop",
+        "src/benchmark/benchmark_internal.h states the project's own rule for this direction one file over: 'hardware/ can't depend back on benchmark/' -- the same reasoning (lower layers must not depend on higher/sibling layers) is violated here by benchmark depending on ui",
+        "Sibling files spi_scale_benchmark.cpp and benchmark_raw.cpp implement the other two benchmark passes without any ui/ include, so this is not a subsystem-wide pattern but a one-off in a single file"
+      ],
+      "suggestion": "Have runChunkedIo() accept a simple function-pointer/lambda progress callback (matching the existing ChunkIoFn pattern already used in the same file for chunkWrite/chunkRead/chunkReadAndCrc) that main.cpp or benchmark.cpp's caller wires to uiShowProgress, instead of benchmark.cpp including ui/display_ui.h directly. This keeps benchmark/ dependent only on core/ and hardware/, matching the rule already documented in benchmark_internal.h, without introducing a heavier abstraction than the codebase already uses elsewhere.",
+      "confidence": "medium",
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "cross_module_architecture": {
+      "add": [
+        {
+          "header": "Layered core/hardware/benchmark/ui dependency direction",
+          "description": "The coupling matrix shows a clean base-up dependency order (core <- hardware <- benchmark, ui) with an explicit in-code rule in benchmark_internal.h stating hardware/ never depends back on benchmark/; every hardware/*.cpp file was verified to only include core/ and third-party headers, confirming the rule is followed, not just stated.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Native test build filter enforces the pure/hardware-dependent boundary",
+          "description": "platformio.ini's [env:native] build_src_filter whitelists exactly the files whose headers claim to be hardware/Arduino-independent (bench_math, card_format, card_identity, touch_calibration, ui_geometry), so the documented architecture boundary is mechanically checked by the build rather than only asserted in comments.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Deliberate singleton state in sd_card.cpp, documented and justified",
+          "description": "sd_card.cpp holds module-static state (sd, info, attempts[], cid, csd) exposed via getters, with a multi-paragraph comment in sd_card.h explaining why this fits the single-hardware-instance embedded device better than threading return values, and explicitly contrasting it with runSpiScalingBenchmark()'s one-shot return -- this is reasoned shared state, not accidental coupling.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "benchmark.cpp reaches into ui/ for live progress rendering",
+          "description": "runChunkedIo() in benchmark.cpp calls uiShowProgress() directly rather than through a callback, creating the one benchmark->ui edge in the coupling matrix; sibling benchmark files (spi_scale_benchmark.cpp, benchmark_raw.cpp) do not do this, so it is an isolated exception rather than a subsystem-wide pattern.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

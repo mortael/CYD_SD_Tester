@@ -1,0 +1,92 @@
+{
+  "batch": "package_organization",
+  "batch_index": 15,
+  "assessments": {
+    "package_organization": 80.0
+  },
+  "dimension_notes": {
+    "package_organization": {
+      "evidence": [
+        "src/util/card_format.h and src/util/card_identity.h are included by exactly one production file, src/hardware/sd_card.h (grep across src/ confirms no other includes) -- 100% import affinity to hardware/, yet the files live in a separate util/ directory instead of hardware/.",
+        "src/util/touch_calibration.h is included by exactly one production file, src/hardware/touch.cpp -- same single-consumer pattern, same directory mismatch.",
+        "src/benchmark/bench_math.h and src/ui/ui_geometry.h carry the identical rationale comment used to justify the util/ split ('Pure ... -- no hardware/Arduino dependency, safe to unit-test on host, see test/test_X') yet were NOT moved to util/ -- they stay inside their owning domain folder (benchmark/, ui/). The extraction rule that produced util/ is applied to 3 of 5 equally-qualifying pure/testable modules and skipped for the other 2, so a developer cannot predict from the rule alone where a given pure helper will be.",
+        "holistic_context.structure.directory_profiles shows util/ avg_fan_in 1.5 with imported_by_dirs = {hardware: 3, tests: 3} -- every production importer is hardware/, confirming util/ is not a cross-domain shared layer for these three files, just a relocation of hardware-only code.",
+        "coupling_matrix is otherwise a clean, acyclic layering: core/ (avg_fan_in 9.0) is imported by benchmark/, hardware/, ui/, util/; hardware/ imports core/+util/; ui/ imports hardware/+core/; benchmark/ imports core/+hardware/+ui/. No reciprocal directory edges (e.g. nothing imports back into ui/ or benchmark/ from a lower layer).",
+        "The only root-level production file is src/main.cpp, the PlatformIO-mandated entry point (framework convention, exempted by the skip rule, not a straggler).",
+        "ui/ (11 files) exceeds the >10-file flat-overload count but is not a violation: every file is a screen-rendering or shared-drawing concern (home in display_ui.cpp, diagnostics in display_diagnostics.cpp + diagnostics.cpp controller, progress in display_progress.cpp, results in display_results.cpp, shared primitives in display_ui_internal.*, pure geometry math in ui_geometry.*) -- high cohesion despite file count, not mixed concerns."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor",
+      "confidence": "high"
+    }
+  },
+  "dimension_judgment": {
+    "package_organization": {
+      "dimension_character": "The post-reorg layout (core/hardware/benchmark/ui/util) is deliberate and mostly coherent: core/ is a genuine high-fan-in shared layer, hardware/ur/benchmark form a clean acyclic dependency chain, and ui/'s file count is justified by consistent screen-based cohesion rather than mixed concerns. The one recurring flaw is that the 'extract pure, host-testable logic' principle that created util/ was applied to card_format/card_identity/touch_calibration (all single-consumer, 100% hardware/-affine) but not to bench_math or ui_geometry, which are equally pure and equally testable but stayed in their domain folders -- so the rule a developer would infer from util/'s existence doesn't actually predict where pure logic lives.",
+      "score_rationale": "This lands at the 80 anchor ('solid but uneven... structural mismatches, ambiguous folder purpose') rather than 90+: the directory boundaries are otherwise well-chosen and the coupling graph is clean and acyclic, but the util/ vs. domain-folder split for pure/testable helpers is inconsistently applied to 3 of 5 qualifying files, which is exactly the import-affinity mismatch and ambiguous-folder-purpose pattern the rubric flags, not a cosmetic nit."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "package_organization",
+      "identifier": "util_dir_hardware_affinity_mismatch",
+      "summary": "util/ holds hardware-only helpers (card_format, card_identity, touch_calibration) while equally pure bench_math/ui_geometry stay in their own domain folders",
+      "related_files": [
+        "src/util/card_format.h",
+        "src/util/card_identity.h",
+        "src/util/touch_calibration.h",
+        "src/hardware/sd_card.h",
+        "src/hardware/touch.cpp",
+        "src/benchmark/bench_math.h",
+        "src/ui/ui_geometry.h"
+      ],
+      "evidence": [
+        "card_format.h and card_identity.h are included solely by src/hardware/sd_card.h; touch_calibration.h is included solely by src/hardware/touch.cpp -- each is 100% single-domain, not shared across hardware/, benchmark/, and ui/.",
+        "bench_math.h ('Pure benchmark math -- no hardware/Arduino dependency, safe to unit-test on host, see test/test_bench_math') and ui_geometry.h ('Pure UI geometry math -- no TFT_eSPI/Arduino dependency, safe to unit-test on host, see test/test_ui_geometry') use the exact same justification as the util/ files but were left inside benchmark/ and ui/ respectively.",
+        "directory_profiles: util/ imported_by_dirs = {hardware: 3, tests: 3} -- confirms util/'s three production files exist purely for hardware/, not as a genuine cross-cutting layer."
+      ],
+      "suggestion": "Pick one consistent rule and apply it to all five pure/testable modules. Simplest: fold the single-consumer pure helpers back into their owning domain (matches the pattern already used for bench_math and ui_geometry, and needs no new directory). Staged plan: (1) git mv src/util/card_format.h src/util/card_format.cpp src/hardware/ and in src/hardware/sd_card.h change '#include \"../util/card_format.h\"' to '#include \"card_format.h\"'; (2) git mv src/util/card_identity.h src/util/card_identity.cpp src/hardware/ and update the matching include in sd_card.h the same way; (3) git mv src/util/touch_calibration.h src/util/touch_calibration.cpp src/hardware/ and update '#include \"../util/touch_calibration.h\"' to '#include \"touch_calibration.h\"' in src/hardware/touch.cpp; (4) update the three include paths in test/test_card_format/test_card_format.cpp, test/test_card_identity/test_card_identity.cpp, test/test_touch_calibration/test_touch_calibration.cpp from '../../src/util/...' to '../../src/hardware/...'; (5) delete the now-empty src/util/ directory; (6) validate with `pio run` (firmware build) and the native/host test environment (e.g. `pio test -e native`) to confirm both the device build and the host-run pure-logic tests still pass.",
+      "confidence": "high",
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor",
+      "root_cause_cluster": "inconsistent_pure_logic_extraction_boundary"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "The directory reorg applied a 'pure/host-testable logic goes in its own folder' rule to only some qualifying modules (card_format, card_identity, touch_calibration) and not others (bench_math, ui_geometry), likely because util/ was populated file-by-file during the reorg rather than from a single explicit inclusion criterion checked against every candidate."
+    ],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "package_organization": {
+      "add": [
+        {
+          "header": "Domain-based reorg into core/hardware/benchmark/ui/util",
+          "description": "The former flat src/ layout was split into five domain folders with an acyclic dependency graph: core/ (config + shared types, fan_in 9.0) sits under everything, hardware/ and util/ sit above core/, and ui/ and benchmark/ sit above hardware/. No reciprocal directory edges exist in the coupling matrix, so a developer can reason about change blast-radius from directory alone.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "core/ is a legitimate high-fan-in shared layer",
+          "description": "src/core/config.h and src/core/app_types.h are imported across every other subdirectory (benchmark, hardware, ui, util) and by multiple test targets -- exactly the 'genuinely core' profile the package_organization rubric exempts from stragglerhood.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "ui/ file count is justified by screen-based cohesion",
+          "description": "ui/ has 11 files, above the flat-overload count threshold, but each file owns a distinct, non-overlapping concern (home screen, diagnostics screen + controller, progress screen, results screen, shared drawing primitives, pure geometry math) rather than mixing unrelated responsibilities, so it does not read as a dumping ground despite the count.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "util/ directory's extraction rule is applied inconsistently",
+          "description": "util/ was created to hold pure, hardware-independent, host-testable logic, but only 3 of the 5 modules matching that description (card_format, card_identity, touch_calibration) were moved there; bench_math and ui_geometry carry the identical rationale comment yet remain inside benchmark/ and ui/. This means the util/ boundary does not reliably predict where pure logic lives -- see the util_dir_hardware_affinity_mismatch issue.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

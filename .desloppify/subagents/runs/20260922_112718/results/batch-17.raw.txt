@@ -1,0 +1,111 @@
+{
+  "batch": "design_coherence",
+  "batch_index": 17,
+  "assessments": {
+    "design_coherence": 82.0
+  },
+  "dimension_notes": {
+    "design_coherence": {
+      "evidence": [
+        "timedFileWrite, timedFileRead, and verifyFile in src/benchmark/benchmark.cpp (lines ~30-241) each implement an identical chunked-loop scaffold (chunk sizing via min(BENCH_BUFFER_SIZE, remaining), micros() timing, an early-return failure guard, and a uiShowProgress() call gated on nextProgress) differing only in whether the per-chunk step is file.write, file.read, or file.read+crc32Update.",
+        "runQuickBenchmark() (src/benchmark/benchmark.cpp, lines 243-436) performs benchmark orchestration and then inlines a ~40-line Serial report block ('=== BENCHMARK RESULT ===' ... '========================'), whereas the sibling scanCard() in src/hardware/sd_card.cpp already extracts its equivalent report into a separate printCardIdentity() function.",
+        "scanCard() (src/hardware/sd_card.cpp, lines 258-370) and runSpiScalingBenchmark() (src/benchmark/spi_scale_benchmark.cpp, lines 45-131) both re-implement the same 'iterate a speed table, sd.end()+delay+cardBegin, printf FAIL %02X/%02X on error' loop shape with different per-stage checks.",
+        "Positive: display_ui.cpp / display_progress.cpp / display_results.cpp / display_diagnostics.cpp all compose screens from a small shared set of primitives (header(), lineRow(), drawButton(), drawHorizontalBar()) defined in display_ui_internal.cpp, keeping each screen function focused on layout rather than re-implementing TFT boilerplate.",
+        "Positive: domain state is grouped into purpose-built structs (CardInfo, BenchmarkResult, SpiScaleResult/SpiScalePoint, AttemptResult in src/core/app_types.h), so public functions take a few semantically meaningful parameters (e.g. uiShowBenchmarkResult(const CardInfo&, const BenchmarkResult&)) rather than long unrelated parameter lists.",
+        "Positive: bench_math.cpp, ui_geometry.cpp, card_format.cpp, and card_identity.cpp are hardware-independent, narrowly-scoped pure functions, each doing exactly one thing (crc32Update, throughputMBs, hitTestRect, computeBarFillWidth, formatHumanBytes, cardTypeName, etc.)."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor",
+      "confidence": "medium"
+    }
+  },
+  "dimension_judgment": {
+    "design_coherence": {
+      "dimension_character": "Most of the codebase shows deliberate, consistent structural design: UI screens compose from a small shared primitive set, domain data is grouped into meaningful structs instead of parameter bags, and pure math/formatting helpers are small and single-purpose. The friction concentrates in src/benchmark/benchmark.cpp, where three ~70-line functions duplicate the same chunked-I/O-with-progress scaffold, and where runQuickBenchmark() inlines a large report-printing block instead of following the report-extraction pattern already established in sd_card.cpp.",
+      "score_rationale": "This sits at the 'solid but uneven' anchor (80-85): the majority of files exhibit exemplary focused-function and struct-grouping design, but a developer working in benchmark.cpp specifically would hit real, avoidable duplication (three near-identical loops) and an inconsistency with the report-extraction precedent set elsewhere in the same codebase. The issues are real but isolated to one module, not systemic, which keeps the score from dropping further."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "design_coherence",
+      "identifier": "benchmark_loop_triplication",
+      "summary": "timedFileWrite/timedFileRead/verifyFile duplicate the same chunked I/O + progress-reporting loop",
+      "related_files": ["src/benchmark/benchmark.cpp"],
+      "evidence": [
+        "timedFileWrite (lines 30-102), timedFileRead (lines 104-176), and verifyFile (lines 178-241) each implement: chunk = min(BENCH_BUFFER_SIZE, BENCH_TEST_SIZE - done); a micros() timing pair; an 'if (result != (int)chunk) return false' guard; done += chunk; and a uiShowProgress() call throttled by nextProgress += BENCH_PROGRESS_STEP.",
+        "The only real differences are which SdFat call is made per chunk (file.write vs file.read vs file.read+crc32Update) and the progress title string passed to uiShowProgress()."
+      ],
+      "suggestion": "Extract one shared chunked-loop helper, e.g. a function that takes the FsFile&, buffer, sizes, a progress title/stage, and a small per-chunk step (function pointer or lambda performing write/read/verify-and-crc), so the chunk-sizing, timing, and progress-throttling logic exists once instead of three times.",
+      "confidence": "medium",
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor",
+      "root_cause_cluster": "duplicated_benchmark_loop_scaffolding"
+    },
+    {
+      "dimension": "design_coherence",
+      "identifier": "quick_benchmark_mixes_orchestration_and_reporting",
+      "summary": "runQuickBenchmark() inlines a large Serial report block instead of extracting a report function like sd_card.cpp does",
+      "related_files": ["src/benchmark/benchmark.cpp", "src/hardware/sd_card.cpp"],
+      "evidence": [
+        "runQuickBenchmark() (lines 243-436) runs the full write/read/verify/raw-read sequence and then, inline, formats and prints a ~40-line '=== BENCHMARK RESULT ===' report (lines 378-433), mixing 'run the benchmark' and 'present the results' in one function body.",
+        "sd_card.cpp already applies the split this function should follow: scanCard() delegates its equivalent report to a separate printCardIdentity() function rather than inlining it."
+      ],
+      "suggestion": "Extract the trailing Serial.println/Serial.printf block (from the '=== BENCHMARK RESULT ===' banner to the closing '========================') into a printBenchmarkResult(const CardInfo&, const BenchmarkResult&) function, mirroring printCardIdentity(), and call it at the end of runQuickBenchmark().",
+      "confidence": "medium",
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "design_coherence",
+      "identifier": "speed_qualification_loop_duplicated_across_files",
+      "summary": "scanCard() and runSpiScalingBenchmark() duplicate the same speed-table iteration and failure-logging scaffold",
+      "related_files": ["src/hardware/sd_card.cpp", "src/benchmark/spi_scale_benchmark.cpp"],
+      "evidence": [
+        "scanCard() (src/hardware/sd_card.cpp, lines 258-370) and runSpiScalingBenchmark() (src/benchmark/spi_scale_benchmark.cpp, lines 45-131) both loop over a compile-time speed table, call sd.end(); delay(10); sd.cardBegin(makeSdConfig(hz)), and printf an 'X FAIL %02X/%02X' message using sd.sdErrorCode()/sdErrorData() on each stage failure -- the same reset+begin+log scaffold reimplemented per file around different stage checks (CID/CSD/sector-read vs readSector/rawRead)."
+      ],
+      "suggestion": "With only two call sites the duplication is tolerable as-is; if a third speed-iterating routine is added, factor the shared reset+begin+per-speed-error-logging scaffold into one helper that takes a per-speed stage-check callback, rather than adding a fourth copy.",
+      "confidence": "low",
+      "impact_scope": "subsystem",
+      "fix_scope": "multi_file_refactor"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "benchmark.cpp's read/write/verify helpers were likely written by copy-pasting one loop and adapting the per-chunk call, rather than factoring the loop shape once."
+    ],
+    "likely_symptoms": [
+      "quick_benchmark_mixes_orchestration_and_reporting"
+    ],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "design_coherence": {
+      "add": [
+        {
+          "header": "UI screens built from small reusable draw primitives",
+          "description": "header(), lineRow(), drawButton(), and drawHorizontalBar() are shared internal primitives (display_ui_internal.cpp) that every uiShow*/uiDraw* function composes from, keeping each screen function focused on layout instead of reimplementing text/color/rect boilerplate.",
+          "positive": true,
+          "settled": true
+        },
+        {
+          "header": "Domain state grouped into purpose-built structs",
+          "description": "CardInfo, BenchmarkResult, SpiScaleResult/SpiScalePoint, and AttemptResult (src/core/app_types.h) group related fields by domain meaning, so functions take few, semantically coherent parameters instead of long unrelated parameter lists.",
+          "positive": true,
+          "settled": true
+        },
+        {
+          "header": "Pure math/format helpers are hardware-independent and narrowly scoped",
+          "description": "bench_math.cpp, ui_geometry.cpp, card_format.cpp, and card_identity.cpp each expose small, single-purpose functions with no Arduino/TFT/SdFat dependency, making them directly unit-testable (test/test_bench_math, test/test_ui_geometry) and easy to reason about in isolation.",
+          "positive": true,
+          "settled": true
+        },
+        {
+          "header": "Report-printing split is inconsistent between sd_card and benchmark",
+          "description": "sd_card.cpp separates its Serial report into printCardIdentity(), but benchmark.cpp's runQuickBenchmark() inlines an equivalent report block instead of following that established split, and the three benchmark loop functions duplicate the same chunked-progress scaffold.",
+          "positive": false,
+          "settled": false
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "batch": "logic_clarity",
+  "batch_index": 19,
+  "assessments": {
+    "logic_clarity": 92.0
+  },
+  "dimension_notes": {
+    "logic_clarity": {
+      "evidence": [
+        "Guard-clause style is applied consistently across failure paths (scanCard(), runQuickBenchmark(), rawReadAtCurrentSpeed(), removeTestFile(), runSpiScalingBenchmark()) so a reader can trust that early returns mean 'stop here', with no dead code following any return/break.",
+        "runChunkedIo() (benchmark.cpp) is the single shared control-flow path for the write/read/CRC-verify passes, driven by a ChunkIoFn function pointer, so the three passes cannot silently diverge in behavior.",
+        "src/hardware/sd_card.cpp: fillCardIdentity() sets both info.cidOk=true and info.csdOk=true together (line ~160-161), but only cidOk is ever read again (printCardReport() line 232, identityCheckName() card_identity.cpp line 78); csdOk is never consumed by any production code path, only asserted to be false-by-default in test_app_types.cpp.",
+        "src/core/config.h defines RAW_TEST_SECTORS (BENCH_TEST_SIZE / SECTOR_SIZE) but no .cpp or test file references it anywhere in the repository; rawReadAtCurrentSpeed() instead recomputes sectors from bytesToRead directly.",
+        "No always-true/false conditions, no identical if/else branches, and no async-without-await patterns were found across the 20 source files reviewed (main.cpp, hardware/, benchmark/, ui/)."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "Two isolated dead-state artifacts (an unused CardInfo::csdOk boolean that mirrors cidOk without ever gating behavior, and an unreferenced RAW_TEST_SECTORS constant) are the only things keeping this below a clean-sweep score; neither affects correctness or observable control flow."
+    }
+  },
+  "dimension_judgment": {
+    "logic_clarity": {
+      "dimension_character": "Control flow throughout this codebase is direct: guard clauses dominate failure handling, the benchmark chunking loop was already consolidated into one shared helper, and no branch does something other than what it visibly says. The only blemishes are two small pieces of dead state (a write-only boolean twin of a used field, and an unreferenced named constant) that create a slightly misleading impression without ever causing incorrect behavior.",
+      "score_rationale": "This sits just below the 100 (exemplary, no material issues) anchor and close to the 90 anchor ('mostly clear with isolated simplification opportunities') because the two defects found are real but trivial and isolated -- a developer tracing scanCard()'s identity-fields or the raw-benchmark sizing math would briefly wonder why csdOk/RAW_TEST_SECTORS exist without being consumed, but nothing here misleads about actual runtime behavior or hides a bug."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "logic_clarity",
+      "identifier": "csd_ok_dead_state",
+      "summary": "CardInfo::csdOk is always set alongside cidOk but never read anywhere, making it dead write-only state",
+      "related_files": [
+        "src/hardware/sd_card.cpp",
+        "src/core/app_types.h"
+      ],
+      "evidence": [
+        "fillCardIdentity() in sd_card.cpp sets info.cidOk = true and info.csdOk = true together, and is only reached after scanCard()'s sequential readCID()-then-readCSD() guard chain has already succeeded for both.",
+        "printCardReport() (sd_card.cpp) and identityCheckName() (card_identity.cpp) both branch on info.cidOk / card.cidOk; neither, nor any other production file, ever reads csdOk.",
+        "test_app_types.cpp only checks that csdOk defaults to false -- no test or production code checks it becoming true."
+      ],
+      "suggestion": "Remove the unused CardInfo::csdOk field (app_types.h) and the corresponding `info.csdOk = true;` assignment in fillCardIdentity() (sd_card.cpp), since cidOk already reflects the same success condition and is the field actually consulted.",
+      "confidence": "medium",
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "logic_clarity",
+      "identifier": "unused_raw_test_sectors_constant",
+      "summary": "RAW_TEST_SECTORS constant in config.h is defined but never referenced by any code",
+      "related_files": [
+        "src/core/config.h"
+      ],
+      "evidence": [
+        "config.h computes `static constexpr uint32_t RAW_TEST_SECTORS = BENCH_TEST_SIZE / SECTOR_SIZE;` but a repository-wide search finds no .cpp/.h file (production or test) referencing RAW_TEST_SECTORS.",
+        "rawReadAtCurrentSpeed() (benchmark_raw.cpp) instead derives wantedSectors from its own bytesToRead parameter divided by SECTOR_SIZE, so the named constant plays no role in the actual computation it appears intended for."
+      ],
+      "suggestion": "Delete the unused RAW_TEST_SECTORS constant from config.h, or if it was meant to be the sector count passed into rawReadAtCurrentSpeed(), use it explicitly at that call site instead of BENCH_TEST_SIZE.",
+      "confidence": "low",
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "Both defects look like leftover artifacts from earlier refactors (CSD read support and a raw-benchmark sizing constant) that were partially wired in but never fully connected to consuming logic."
+    ],
+    "likely_symptoms": [
+      "csd_ok_dead_state",
+      "unused_raw_test_sectors_constant"
+    ],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "logic_clarity": {
+      "add": [
+        {
+          "header": "Consistent guard-clause control flow",
+          "description": "Failure handling across scanCard(), runQuickBenchmark(), rawReadAtCurrentSpeed(), removeTestFile(), and runSpiScalingBenchmark() uniformly uses early-return guard clauses rather than nested conditionals, so a developer can trust that once a failure check fires, nothing further in that function runs.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Shared chunked-I/O loop removes triplicated control flow",
+          "description": "runChunkedIo() in benchmark.cpp is the single control-flow path driving the write, read, and CRC-verify passes via a ChunkIoFn function pointer, so the three benchmark stages cannot silently diverge in looping/progress/error-handling behavior the way three hand-copied loops could.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "CardInfo::csdOk is dead write-only state",
+          "description": "csdOk is always set true in lockstep with cidOk inside fillCardIdentity() but is never read by any production code path (only cidOk gates behavior in printCardReport()/identityCheckName()); it exists as a vestigial twin of cidOk from what looks like partial CSD-support wiring.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "batch": "ai_generated_debt",
+  "batch_index": 13,
+  "assessments": {
+    "ai_generated_debt": 96.5
+  },
+  "dimension_notes": {
+    "ai_generated_debt": {
+      "evidence": [
+        "Headers flagged by the mechanical scanner for high comment_ratio (benchmark.h 0.64, sd_card.h 0.53, card_identity.h 0.54, card_format.h 0.56, touch_calibration.h 0.56, ui_geometry.h 0.3) contain WHY-level design-rationale comments, not restated code: sd_card.h explains why scanCard() returns bool-but-callers-ignore-it vs runSpiScalingBenchmark()'s self-contained result (persistent queryable state vs one-shot display); touch_calibration.h documents the X/Y axis swap caused by physical touch-panel mounting; benchmark_internal.h documents why DMA allocation lives in hardware/ instead of benchmark/ (dependency-direction constraint)",
+        "Serial.printf calls throughout sd_card.cpp (printCardReport), benchmark.cpp (printBenchmarkResult), spi_scale_benchmark.cpp are the tool's actual diagnostic output for an SD-card tester, not nosy entry/exit or object-dump logging",
+        "recordSdError() (src/hardware/sd_card.h/.cpp) is called uniformly from sd_card.cpp's scanCard() and spi_scale_benchmark.cpp instead of duplicated inline error-capture blocks -- the previously-flagged boilerplate duplication stays fixed",
+        "touch.cpp's readTouch() has no unconditional debug prints on the hot sampling path -- the previously-flagged nosy logging stays removed",
+        "Function names are domain-specific throughout (scanCard, cardTypeName, allocateDmaBuffer, mapTouchToScreen, computeBarFillWidth, recordSdError) with no generic handleX/processX/doOperation placeholders anywhere in src/",
+        "No pass-through wrapper functions found; helpers like runChunkedIo (benchmark.cpp) and the drawing helpers in display_ui_internal.cpp add real behavior (timing, progress callbacks, shared drawing primitives), not blind forwarding",
+        "Only trace defensive habit found: spi_scale_benchmark.cpp guards `if (buffer) free(buffer); if (sector0) free(sector0);` before calling free() on pointers that are already safe to free when null -- trivial, single-line, no real cost to a reader"
+      ],
+      "impact_scope": "codebase",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "Only a cosmetic trace remains: redundant null-guards before free() calls in spi_scale_benchmark.cpp (free(nullptr) is already a no-op), which is the sole remaining hint of defensive-check-on-already-safe-values. It's too trivial to warrant a tracked issue but keeps the score just under exemplary."
+    }
+  },
+  "dimension_judgment": {
+    "ai_generated_debt": {
+      "dimension_character": "The codebase shows almost none of the LLM-hallmark patterns this dimension looks for: comments consistently explain non-obvious WHY-level design decisions (return-shape rationale, hardware axis-swap quirks, dependency-direction constraints) rather than restating adjacent code, debug output is limited to the tool's genuine diagnostic purpose, and the one previously-flagged boilerplate duplication (SD error recording) is now centralized in a shared helper. Naming is domain-specific everywhere, and no pass-through wrappers or generic-name placeholders were found in any of the 29 source files.",
+      "score_rationale": "This sits at the top of the anchor scale (90-100: 'mostly clean' to 'purpose-driven with no ceremony') because a developer's attention here is spent entirely on real domain logic -- SPI qualification, chunked I/O, touch coordinate mapping -- with essentially zero filler ceremony to mentally filter. It falls just short of a perfect score only because of one truly trivial, single-line defensive habit (redundant null-checks before free()) with no measurable impact on comprehension."
+    }
+  },
+  "issues": [],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": [
+      "ai_debt_signals.file_signals comment_ratio (benchmark.h, sd_card.h, card_identity.h, card_format.h, touch_calibration.h, ui_geometry.h) reads as a high-comment-density signal that could suggest docstring bloat, but on inspection every flagged file's comments are load-bearing design rationale (WHY, not WHAT) -- this mechanical signal is misleading for this dimension in this codebase"
+    ]
+  },
+  "context_updates": {
+    "ai_generated_debt": {
+      "add": [
+        {
+          "header": "Header comments explain WHY, not WHAT",
+          "description": "The headers with the highest mechanical comment_ratio (sd_card.h, benchmark.h, card_identity.h, touch_calibration.h, ui_geometry.h) use their comments to document non-obvious cross-file design decisions -- e.g. sd_card.h contrasts scanCard()'s persistent-state getter pattern against runSpiScalingBenchmark()'s one-shot return value, and touch_calibration.h documents the physical X/Y axis swap from panel mounting. None of it restates adjacent code, so the high comment density is a documentation strength, not AI-slop bloat.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Diagnostic Serial output is purposeful, not nosy logging",
+          "description": "Serial.printf calls in sd_card.cpp, benchmark.cpp, and spi_scale_benchmark.cpp print card/benchmark reports that are the tool's actual user-facing output (this is an SD diagnostic utility whose only UI besides the TFT is Serial). There is no per-function entry/exit logging or full-struct dumping; the previously-flagged unconditional touch-coordinate debug prints in touch.cpp remain removed.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "recordSdError() still centralizes error-capture boilerplate",
+          "description": "sd_card.cpp's scanCard() and spi_scale_benchmark.cpp both call the shared recordSdError(sd, errorCode, errorData, label) helper instead of duplicating the sdErrorCode()/sdErrorData()/printf pattern inline -- confirms the prior review-round fix for this dimension has held.",
+          "settled": true,
+          "positive": true
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,1370 @@
+{
+  "assessments": {
+    "abstraction_fitness": {
+      "score": 94.0,
+      "components": [
+        "Abstraction Leverage",
+        "Indirection Cost",
+        "Interface Honesty",
+        "Delegation Density",
+        "Definition Directness",
+        "Type Discipline"
+      ],
+      "component_scores": {
+        "Abstraction Leverage": 94.0,
+        "Indirection Cost": 95.0,
+        "Interface Honesty": 96.0,
+        "Delegation Density": 100.0,
+        "Definition Directness": 95.0,
+        "Type Discipline": 90.0
+      }
+    },
+    "ai_generated_debt": 96.5,
+    "api_surface_coherence": 91.5,
+    "authorization_consistency": 100.0,
+    "contract_coherence": 90.5,
+    "convention_outlier": 88.5,
+    "cross_module_architecture": 91.0,
+    "dependency_health": 97.0,
+    "design_coherence": 91.0,
+    "error_consistency": 84.0,
+    "high_level_elegance": 91.5,
+    "incomplete_migration": 97.0,
+    "initialization_coupling": 93.0,
+    "logic_clarity": 92.0,
+    "low_level_elegance": 94.0,
+    "mid_level_elegance": 91.5,
+    "naming_quality": 92.0,
+    "package_organization": 90.5,
+    "test_strategy": 89.0,
+    "type_safety": 91.5
+  },
+  "dimension_notes": {
+    "cross_module_architecture": {
+      "evidence": [
+        "Coupling matrix (holistic_context.structure.coupling_matrix) shows a clean, mostly one-directional dependency graph: src/ui -> src/hardware (9), src/hardware -> src/core (6), src/benchmark -> src/core (6), src/benchmark -> src/hardware (5), src/ui -> src/core (3) -- core is the base layer, hardware sits above it, benchmark and ui sit above hardware, with no core-> or hardware->benchmark edges anywhere in the tree.",
+        "src/benchmark/benchmark_internal.h explicitly documents the intended direction: 'DMA buffer allocation is shared from ../hardware/sd_card.h instead, since hardware/ can't depend back on benchmark/' -- an architectural rule stated in code and honored by every hardware/*.cpp file (verified: hardware/sd_card.cpp, card_format.cpp, card_identity.cpp, touch.cpp only #include core/ and SdFat/Arduino headers, never benchmark/ or ui/).",
+        "The one exception is src/benchmark/benchmark.cpp, which #include \"../ui/display_ui.h\" and calls uiShowProgress() directly inside runChunkedIo() (benchmark.cpp lines 9, 98, 139, 361, 429) to render live progress during long file write/read/verify passes -- a benchmark-layer (logic) module reaching directly into the ui (presentation) layer, the only benchmark->ui edge in the whole coupling matrix and inconsistent with the hardware/ dependency rule stated one file over.",
+        "Sibling benchmark files do not do this: src/benchmark/spi_scale_benchmark.cpp and src/benchmark/benchmark_raw.cpp (which implement runSpiScalingBenchmark()/rawReadAtCurrentSpeed()) never include ui/ headers, so the ui coupling is specific to one file/function family rather than the whole benchmark subsystem.",
+        "platformio.ini's [env:native] build_src_filter whitelists exactly the hardware/Arduino-independent files (bench_math.cpp, card_format.cpp, card_identity.cpp, touch_calibration.cpp, ui_geometry.cpp), and each corresponding header carries a matching comment ('Pure ... no hardware/Arduino dependency, safe to unit-test on host') -- the documented pure/impure boundary matches the actual native-test build configuration rather than drifting from it.",
+        "src/hardware/sd_card.h documents, in a multi-paragraph comment on scanCard(), exactly why the module exposes persistent global state (info, attempts[], sd) through getters (getCardInfo()/getAttempts()/getSd()) rather than return values, and contrasts this explicitly with runSpiScalingBenchmark()'s one-shot SpiScaleResult return -- a deliberate, reasoned single-hardware-instance singleton pattern rather than incidental shared mutable state.",
+        "No leftover compatibility shims, deprecated symbols, or migration residue were found (grep for DEPRECATED/TODO/FIXME/legacy/shim across src/ returned nothing); the prior util/ directory noted in project history has been fully folded into hardware/, not left as a partial migration.",
+        "src/core/config.h (10 importers) and src/core/app_types.h (8 importers) are the most-imported files, but both are pure constant/value-type definitions with no logic of their own (config.h is pin/buffer/timing constants, app_types.h is plain structs/enums) -- high fan-in here is the expected shape of a shared base-layer header in an embedded project, not a hub module concentrating behavior."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor",
+      "confidence": "medium",
+      "issues_preventing_higher_score": "The single benchmark.cpp -> ui/display_ui.h coupling for live progress reporting is a real, isolated inversion of the codebase's otherwise-enforced lower-never-depends-on-upper rule; it keeps the score just below the 'mostly coherent, isolated drift' ceiling."
+    },
+    "high_level_elegance": {
+      "evidence": [
+        "src/ splits cleanly into core/ (pin config + shared value types, zero downstream deps), hardware/ (SD + touch drivers and their pure-logic companions), benchmark/ (quick + SPI-scaling benchmarks, pure math split into bench_math.*), and ui/ (TFT rendering split one file per screen) - each maps to a real domain capability, not a historical accident.",
+        "main.cpp (151 lines) is genuinely a thin event loop: setup() wires initDisplay/initTouch/initSdHardware + one rescan(); loop() reads touch, hit-tests, and dispatches on HomeAction to rescan()/runBenchMenu()/showDiagnostics() - matching CLAUDE.md's Architecture description verbatim.",
+        "Dependency direction is coherent: core/ has zero includes of hardware/benchmark/ui; hardware/ only includes core/; benchmark/ includes core/+hardware/; ui/ includes core/+hardware/ - confirmed by grepping every #include in src/.",
+        "CLAUDE.md's Architecture section (lines 91-104) still documents a `diagnostics.*` file pair with a `showDiagnosticsScreen()` function ('thin glue ... composing uiShowDiagnostics() + uiWaitForTap() for main.cpp's one call site'), but src/ui/diagnostics.h and diagnostics.cpp no longer exist - the logic was inlined into main.cpp as a static showDiagnostics() (main.cpp:14-22, calling uiShowDiagnostics() + uiWaitForTap() directly).",
+        "Aside from that one stale paragraph, CLAUDE.md's per-directory breakdown (core/hardware/benchmark/ui responsibilities, the two SPI speed ladders, the DMA buffer/recordSdError sharing rationale, the timing-discipline note in benchmark.cpp) all match the current source exactly - verified sd_card.cpp's function list against the 'sd_card.cpp is now limited to: SPI/card init, speed qualification, CID/CSD, filesystem mount, card identity/state' claim, and benchmark/*.cpp's function list against the benchmark.h summary.",
+        "benchmark/benchmark.cpp includes ../ui/display_ui.h and calls uiShowProgress() directly (4 call sites) during chunked I/O, meaning the benchmark domain module drives UI rendering itself rather than main.cpp orchestrating it - an atypical layering choice for a domain-owns-UI-call pattern, but it is deliberate and explained in-line (single-threaded embedded loop, timing-discipline comments) rather than accidental drift."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "CLAUDE.md's Architecture section still describes a deleted diagnostics.* file pair and a showDiagnosticsScreen() function that was inlined into main.cpp; a new engineer reading the doc would look for a file that doesn't exist."
+    },
+    "convention_outlier": {
+      "evidence": [
+        "src/hardware/sd_card.h declares makeSdConfig(uint32_t hz), cardTypeName(uint8_t type, uint64_t capacityBytes), fsName(uint8_t type), and allocateDmaBuffer(size_t size, const char* label) as single-line signatures, and sd_card.cpp defines them the same compact way.",
+        "src/hardware/card_format.h declares formatHumanBytes(uint64_t bytes, char* out, size_t outSize) and formatSpiClock(uint32_t hz, char* out, size_t outSize) compactly on one line, but card_format.cpp wraps both definitions one-argument-per-line, so the header and source disagree on style for the same functions.",
+        "src/hardware/card_identity.h declares all three of its functions (attemptStageName, resolveVendor, identityCheckName) compactly on one line; in card_identity.cpp, attemptStageName and resolveVendor stay compact but identityCheckName(const CardInfo& card) is wrapped onto multiple lines despite fitting easily on one, and despite its own header declaring it compactly.",
+        "By contrast, every other header/source pair with parameterized functions -- src/hardware/touch.h/.cpp, src/hardware/touch_calibration.h/.cpp, src/benchmark/bench_math.h/.cpp, src/benchmark/benchmark.h/.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, src/ui/ui_geometry.h/.cpp, src/ui/display_ui.h/.cpp, src/ui/display_ui_internal.h (lineRow) -- always wraps every parameter onto its own line regardless of how short the signature is (e.g. touch.h's `bool readTouch(int& sx, int& sy);` and bench_math.h's `float throughputMBs(size_t bytes, uint64_t ioMicros);` are wrapped even though both fit comfortably on one line).",
+        "The historical record shows the prior review batch explicitly reformatted touch.h/touch.cpp to match what it called 'the dominant one-arg-per-line style used throughout the rest of src/' -- confirming that style is the established codebase norm -- but sd_card.*/card_format.*/card_identity.* were not part of that pass and remain on the old compact style.",
+        "display_ui_internal.h declares header(const char* title) compactly on one line, but display_ui_internal.cpp wraps its single parameter onto its own line; header's sibling lineRow() is wrapped in both files, but that is justified by lineRow's genuinely longer 4-parameter signature, so header() is the odd one out even within this one small file.",
+        "Outside of this signature-wrapping split, conventions are strongly uniform: naming case (PascalCase types, camelCase functions/locals, SCREAMING_SNAKE constants), #pragma once in all 13 headers (no mixed include-guard styles), consistent use of `static` for internal linkage (no anonymous namespaces remain -- touch_calibration.cpp's mapRange/clampInt are static, matching the rest), and structs (never classes) used uniformly for both domain data (CardInfo, BenchmarkResult, AttemptResult) and local per-file drawing state (Button in display_ui.cpp, ScaleGraph/ScalePointXY in display_results.cpp).",
+        "display_diagnostics.cpp, display_results.cpp, display_progress.cpp, and display_ui.cpp all follow the same behavioral protocol (call header() once at the top of each full-screen draw function, then use tft()/lineRow() from display_ui_internal.h), so sibling screen files do not diverge in their draw-function protocol."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "confidence": "medium",
+      "issues_preventing_higher_score": "A residual compact-signature style island in hardware/sd_card.*, hardware/card_format.*, and hardware/card_identity.* diverges from the one-arg-per-line style the codebase has otherwise standardized on (and that the previous review round explicitly enforced elsewhere), plus a self-contradictory decl/def mismatch for identityCheckName() and header()."
+    },
+    "error_consistency": {
+      "evidence": [
+        "recordSdError() (hardware/sd_card.h/.cpp) is a single shared helper that captures sd.sdErrorCode()/sd.sdErrorData() and prints a uniform 'LABEL FAIL XX/XX' line; it is called consistently at every stage of scanCard() (INIT/CID/CSD/READ) and at every stage of runSpiScalingBenchmark() (INIT/READ/BENCH), and after sd.volumeBegin() failure in scanCard().",
+        "BenchmarkResult (src/core/app_types.h lines 53-69) has only bool *Ok fields (preallocOk, fileWriteOk, fileReadOk, verifyOk, rawReadOk, cleanupOk) and no error-code fields, unlike CardInfo (volumeErrorCode/volumeErrorData), AttemptResult (errorCode/errorData) and SpiScalePoint (errorCode/errorData).",
+        "runChunkedIo() in src/benchmark/benchmark.cpp (used by timedFileWrite/timedFileRead/verifyFile) returns false on a short transfer (transferred != (int)chunk) without calling recordSdError() or logging anything at all, so a failed file write/read in the quick benchmark leaves no diagnostic trail.",
+        "runQuickBenchmark() (src/benchmark/benchmark.cpp) has `if (file) { ... }` around the entire write/read/verify sequence with no else branch; when sd.open(TEST_FILE, O_RDWR|O_CREAT|O_TRUNC) fails, execution silently falls through to the raw-read stage with zero Serial output, unlike every card-level failure branch elsewhere in the codebase.",
+        "rawReadAtCurrentSpeed() (src/benchmark/benchmark_raw.cpp) does capture sd.sdErrorCode()/sd.sdErrorData() on failure but via its own inline Serial.printf('Raw read failed at LBA %lu: %02X/%02X') rather than the shared recordSdError() helper, producing a second message format for the same kind of failure.",
+        "No exceptions are used anywhere in src/ (grepped for try/catch/throw) \u2014 the codebase uniformly uses bool return values plus out-parameters for failure signaling, appropriate for this embedded, exceptions-off target.",
+        "allocateDmaBuffer() (hardware/sd_card.h/.cpp) is the single shared allocation-failure helper; all three call sites (scanCard, runQuickBenchmark, runSpiScalingBenchmark) check its nullptr return and take a well-defined failure path."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor",
+      "confidence": "high",
+      "issues_preventing_higher_score": ""
+    },
+    "naming_quality": {
+      "evidence": [
+        "CardInfo/BenchmarkResult/SpiScalePoint booleans (cardOk, volumeOk, cidOk, csdOk, preallocOk, fileWriteOk, fileReadOk, verifyOk, rawReadOk, cleanupOk, point.ok) all use a consistent Ok suffix, so a reader can predict every flag's meaning without checking the implementation.",
+        "getSd()/getCardInfo()/getAttempts()/getAttemptCount() in src/hardware/sd_card.h are all pure, side-effect-free reads of module state - the get prefix never lies.",
+        "main.cpp's private orchestrators (rescan(), showDiagnostics(), runBenchMenu()) are named without a ui prefix and each simply sequences one or more ui*()-prefixed pure draw/interaction calls (uiDrawHome, uiShowDiagnostics, uiWaitForTap) - a consistent, learnable split between 'draws/reads input' (ui*) and 'orchestrates a user-visible flow' (bare verb) that resolves the naming collision risk flagged in a prior review round.",
+        "sd_card.h documents, right at the declaration, exactly why scanCard() returns a persistent-state getter pattern while runSpiScalingBenchmark() (benchmark.h) returns a one-shot SpiScaleResult instead - preventing the kind of get-vs-return ambiguity that would otherwise require reading both implementations.",
+        "Pure helper modules (bench_math.h, card_format.h, card_identity.h, ui_geometry.h) all use precise, single-purpose names - crc32Update, throughputMBs, preparePattern, repeatedBufferCrc32, spiEfficiencyPercent, formatHumanBytes, formatSpiClock, cardTypeName, fsName, attemptStageName, resolveVendor, identityCheckName, hitTestRect, computeBarFillWidth - each name states exactly what value it computes.",
+        "src/hardware/touch.h declares `bool readTouch(int& sx, int& sy)`, and touch.cpp's own body computes descriptive `rawX`/`rawY` locals before abbreviating the mapped result to `sx`/`sy` - while touch_calibration.h's mapTouchToScreen() uses fully-spelled `screenX`/`screenY` for the identical screen-coordinate concept, and ui_geometry.h uses `pointX`/`pointY`/`rectX`/`rectY` elsewhere. This is the one place in the codebase where an abbreviation diverges from the descriptive-name convention used for the same concept everywhere else."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "readTouch()'s sx/sy output parameters (src/hardware/touch.h, src/hardware/touch.cpp) abbreviate screen coordinates inconsistently with the screenX/screenY naming already established for the same concept in mapTouchToScreen()."
+    },
+    "abstraction_fitness": {
+      "evidence": [
+        "card_format.h/.cpp, card_identity.h/.cpp, bench_math.h/.cpp, ui_geometry.h/.cpp, and touch_calibration.h/.cpp are each narrow, single-purpose pure-logic modules explicitly documented as 'no hardware/Arduino dependency, safe to unit-test on host' \u2014 not a generic util dumping ground.",
+        "recordSdError() (hardware/sd_card.h) is called from 5 real sites across sd_card.cpp and spi_scale_benchmark.cpp, replacing what the historical review notes was previously duplicated error-logging logic \u2014 an abstraction earned by actual reuse.",
+        "allocateDmaBuffer() (hardware/sd_card.h) is shared by sd_card.cpp, benchmark.cpp, and spi_scale_benchmark.cpp instead of three separate implementations, per the (resolved) historical low_level_elegance/error_consistency findings.",
+        "benchmark.cpp's runChunkedIo()+ChunkIoFn function-pointer strategy is instantiated exactly three concrete ways (chunkWrite/chunkRead/chunkReadAndCrc) to remove the previously-flagged timedFileWrite/timedFileRead/verifyFile triplication; a real, bounded generalization rather than speculative machinery.",
+        "sd_card.h's doc comment explicitly contrasts scanCard()'s persistent-getter contract with runSpiScalingBenchmark()'s one-shot SpiScaleResult return, so a caller can't wrongly assume the two hardware-scan entry points share a shape \u2014 interface honesty enforced in the header itself.",
+        "display_ui_internal.h/benchmark_internal.h are deliberately-scoped 'not part of the public API' headers holding only what's shared across a module's own .cpp files (tft()/header()/lineRow(); rawReadAtCurrentSpeed()) \u2014 the public headers (display_ui.h, benchmark.h) stay minimal and consistent.",
+        "The codebase has zero classes with delegation, zero interface/protocol families, and zero facade/re-export-only modules (confirmed by reading all 29 src/ files) \u2014 it is a procedural free-function + static-file-scope-state design, so those specific anti-patterns structurally don't arise.",
+        "CardInfo (core/app_types.h) is a ~20-field struct threaded through many modules via a single const-ref getCardInfo() getter, but every field is a concrete piece of card-diagnostic domain state consumed directly by name (not a generic options/context bag) and access is uniform across ui/, benchmark/, and hardware/."
+      ],
+      "impact_scope": "codebase",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "No concrete defects found; the only residual gap is that the internal-header convention (display_ui_internal.h/benchmark_internal.h as 'private' cross-file headers) is an informal, unenforced substitute for real translation-unit encapsulation \u2014 nothing stops a future file from including an _internal.h it shouldn't, so the boundary relies on comment discipline rather than a compiler-checked mechanism. This is a minor, low-severity observation at the current codebase size (29 files), not something warranting a refactor.",
+      "sub_axes": {
+        "abstraction_leverage": 94.0,
+        "indirection_cost": 95.0,
+        "interface_honesty": 96.0,
+        "delegation_density": 100.0,
+        "definition_directness": 95.0,
+        "type_discipline": 90.0
+      }
+    },
+    "dependency_health": {
+      "evidence": [
+        "platformio.ini declares exactly two external libraries in lib_deps: bodmer/TFT_eSPI@2.5.43 and greiman/SdFat@2.3.1, both pinned to exact versions",
+        "TFT_eSPI is the sole display/rendering library, used consistently across all of src/ui/ (display_ui.cpp, display_ui_internal.cpp, display_progress.cpp, display_results.cpp, display_diagnostics.cpp) with no competing rendering library",
+        "SdFat is the sole SD/filesystem library, used consistently across src/hardware/sd_card.* and src/benchmark/*.cpp; no calls to Arduino's built-in SD.h/FS.h/SPIFFS/LittleFS exist anywhere in src/, so there is no duplicate filesystem-library overlap",
+        "No unused entries in lib_deps -- both declared libraries are exercised by real production code paths",
+        "SPI.h and esp_heap_caps.h are framework-provided (arduino-esp32/ESP-IDF core), not separate managed dependencies, and are used narrowly and appropriately in hardware/sd_card.cpp",
+        "The [env:native] host test environment uses PlatformIO's built-in Unity test_framework with no external lib_deps, appropriately excluded from this dimension per the dev-dependency skip rule",
+        "No package.json/library.json manifest exists at the repo root; platformio.ini is the single, authoritative dependency manifest, and .pio (the fetched-library cache) is gitignored so there's no stale/checked-in lock artifact to drift",
+        "[env:cyd]'s `platform = espressif32` has no version pin (unlike the two lib_deps entries), so the underlying ESP-IDF/Arduino-core toolchain version is not fixed the same way the two libraries are"
+      ],
+      "impact_scope": "codebase",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "The espressif32 platform toolchain itself is unpinned in platformio.ini (`platform = espressif32` with no version suffix), so a fresh checkout could build against a different ESP-IDF/Arduino-core version than the one SdFat@2.3.1/TFT_eSPI@2.5.43 were validated against, leaving one version-drift gap even though both external libraries are now pinned."
+    },
+    "low_level_elegance": {
+      "evidence": [
+        "benchmark.cpp: runChunkedIo() is a single shared chunked-loop helper (ChunkIoFn callback + void* context) consumed by timedFileWrite/timedFileRead/verifyFile via chunkWrite/chunkRead/chunkReadAndCrc \u2014 the triplicated loop from the prior review round is gone and the three call sites differ only in the parameters that matter (title, chunkFn, showLiveRate).",
+        "display_results.cpp: uiShowSpiScaleResult() is now composed of scaleGraphMaxSpeed(), drawScaleGraphFrame(), scalePointCoords(), drawScalePoint(), buildScaleSummary() \u2014 each a small, single-purpose helper with a precise doc comment; the orchestrating function reads as a short loop over these helpers rather than one long procedure.",
+        "sd_card.cpp scanCard(): each of the four qualification stages (cardBegin/readCID/readCSD/readSector) follows the identical fail -> set AttemptStage -> recordSdError -> continue shape; the repetition is a direct narration of a sequential hardware protocol rather than copy-paste drift, and further extraction would hide the stage-to-stage sequencing.",
+        "Null/guard checks appear only at genuine boundaries: allocateDmaBuffer() checks the malloc result, rawReadAtCurrentSpeed() checks sd.card() and totalSectors==0, runQuickBenchmark() checks card.cardOk/buffer before proceeding \u2014 no speculative defensive checks on values that can't be null.",
+        "File-static globals in sd_card.cpp (sd, info, attempts, cid, csd) are only ever mutated inside sd_card.cpp's own functions and reset explicitly at the top of scanCard() (info = {}; clearAttempts();) so state transitions are local and visible at the call site that triggers them.",
+        "display_diagnostics.cpp's per-row color pick nests two ternaries (Passed ? GREEN : (NotTried ? DARKGREY : RED)); readable due to formatting but is the one spot in the reviewed files where a plain if/else chain would be more direct than a ternary chain."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "One nested three-way ternary (display_diagnostics.cpp's per-row color selection) is marginally less direct than an if/else chain would be; it is an isolated, low-impact instance rather than a pattern, and doesn't warrant an actionable defect."
+    },
+    "mid_level_elegance": {
+      "evidence": [
+        "src/core/app_types.h is the single shared header for every cross-module data shape (AttemptResult, CardInfo, BenchmarkResult, SpiScaleResult/SpiScalePoint) \u2014 hardware/, benchmark/, and ui/ all translate through these same structs with no per-module duplicate shapes.",
+        "Pure translation/formatting helpers are isolated into their own files with an explicit 'no hardware/Arduino dependency, safe to unit-test' comment and a matching test/ directory: card_format.h/.cpp, card_identity.h/.cpp, ui_geometry.h/.cpp, bench_math.h/.cpp, touch_calibration.h/.cpp \u2014 each is the one obvious place its translation logic lives.",
+        "Every UI screen follows the same draw()/hitTest() pairing convention (uiDrawHome/uiHitTestHome, uiDrawBenchMenu/uiHitTestBenchMenu), each hitTest taking (x, y) and returning a plain enum action, so main.cpp's orchestration loop is a uniform, predictable composition across all screens (src/main.cpp lines 24-150).",
+        "sd_card.h documents, at the declaration, exactly why scanCard() returns a bool nobody checks while exposing state via getters (persistent, arbitrarily-re-queried diagnostics data) versus why runSpiScalingBenchmark() instead returns a one-shot SpiScaleResult \u2014 the two historically-flagged mid_level_elegance issues (accidental transitive include of card_format/card_identity via sd_card.h; runSpiScalingBenchmark()'s undocumented rescan side effect) are both resolved: every ui/ and benchmark/ file that calls card_format/card_identity now includes those headers directly, and the rescan is documented on both the .h declaration and inline at the call site in spi_scale_benchmark.cpp.",
+        "uiShowProgress()'s done==0 parameter convention ('No hidden screen state: done == 0 explicitly starts a new progress screen', display_progress.cpp line 15-19) makes the repeated-call contract between benchmark.cpp and the UI layer explicit rather than relying on internal screen state.",
+        "benchmark_internal.h documents the dependency-direction rule at the seam itself ('DMA buffer allocation is shared from ../hardware/sd_card.h instead, since hardware/ can't depend back on benchmark/'), rather than leaving it implicit.",
+        "One remaining asymmetry: benchmark.cpp (runQuickBenchmark/runChunkedIo) calls uiShowProgress() directly rather than routing progress through the main.cpp orchestrator that calls it \u2014 the only benchmark/->ui coupling edge in the import graph \u2014 so progress reporting bypasses the otherwise clean main-as-composer pattern seen everywhere else."
+      ],
+      "impact_scope": "subsystem",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "The one recurring friction point is benchmark/'s direct call into ui/ for live progress display (uiShowProgress inside runChunkedIo/runQuickBenchmark), which breaks the otherwise uniform pattern of main.cpp as the sole composer of hardware/benchmark/ui collaborators; it is minor, well-contained, and arguably the pragmatic choice for a single-threaded embedded loop, but it is a real boundary crossing not present elsewhere in the codebase."
+    },
+    "test_strategy": {
+      "evidence": [
+        "Every module the project itself classifies as hardware-independent has a matching Unity suite under test/: bench_math<->test_bench_math, card_format<->test_card_format, card_identity<->test_card_identity, touch_calibration<->test_touch_calibration, ui_geometry<->test_ui_geometry, app_types<->test_app_types.",
+        "platformio.ini's env:native build_src_filter compiles exactly those five .cpp files plus the test files, and .github/workflows/native-tests.yml runs `pio test -e native` on every push/pull_request, so the safety net is CI-enforced, not manual.",
+        "Tests assert concrete boundary/edge behavior rather than smoke-testing: 1 GiB boundary takes the GiB branch (test_card_format), half-open hit-test rectangle inclusivity (test_ui_geometry), out-of-range raw touch values clamp to screen edges and axes are swapped (test_touch_calibration), CRC32 matches whether computed in one pass or split across chunks (test_bench_math).",
+        "Zero snapshot tests, zero timing/ordering dependent assertions, zero mocking of internals -- every test calls only the public header API and checks a fully deterministic expected value.",
+        "src/ui/display_results.cpp contains scaleGraphMaxSpeed(), scalePointCoords(), and buildScaleSummary() -- pure float/int arithmetic and snprintf with no TFT_eSPI calls -- extracted during a prior low_level_elegance cleanup (splitting uiShowSpiScaleResult) but left inside the TFT-coupled file, so it is excluded from env:native and has no test coverage, unlike the structurally identical computeBarFillWidth()/hitTestRect() in ui_geometry.cpp which were extracted for exactly this host-testability reason.",
+        "cardTypeName() and fsName() are deliberately kept in the untestable hardware/sd_card.cpp (they need real SdFat type constants) rather than card_identity.cpp -- CLAUDE.md documents this as an intentional correctness-over-coverage tradeoff, not an oversight.",
+        "CLAUDE.md's Build & test commands and Architecture sections accurately name which files are tested and explicitly state hardware-coupled files (main.cpp, hardware/, benchmark/, ui/ TFT/SdFat/Arduino code) have no automated coverage and require flashing real hardware to validate -- the gap is documented honestly rather than hidden."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor",
+      "confidence": "high",
+      "issues_preventing_higher_score": "One concrete, fixable gap remains: display_results.cpp's SPI-scale-graph math helpers are pure and host-testable but untested, breaking the codebase's own established convention of extracting such logic into ui_geometry.h."
+    },
+    "api_surface_coherence": {
+      "evidence": [
+        "readTouch(int& sx, int& sy) (src/hardware/touch.h) and rawReadAtCurrentSpeed(buffer, bytesToRead, float& speedMBs) (src/benchmark/benchmark_internal.h) both use the same 'bool success + trailing out-ref' shape for hardware operations that can fail.",
+        "formatHumanBytes(bytes, char* out, size_t outSize), formatSpiClock(hz, char* out, size_t outSize) (src/hardware/card_format.h) and buildScaleSummary(result, char* out, size_t outSize) (src/ui/ui_geometry.h) all use the identical (inputs..., char* out, size_t outSize) shape for every string-producing function in the codebase -- no function returns a heap string or a differently-shaped buffer pair.",
+        "Across all 13 public headers (src/core, src/hardware, src/benchmark, src/ui) no function is overloaded and no public function exceeds 5 parameters -- the widest is scalePointCoords(graph, maxSpeed, index, count, point) in src/ui/ui_geometry.h at exactly 5.",
+        "Screen-drawing functions uniformly take CardInfo/BenchmarkResult/SpiScaleResult by const&: uiDrawHome(const CardInfo&), uiShowBenchmarkResult(const CardInfo&, const BenchmarkResult&), uiShowDiagnostics(const CardInfo&, const AttemptResult*, size_t) (src/ui/display_ui.h) -- no screen function reaches into global getters itself, keeping the render boundary explicit and consistent.",
+        "The one real API-shape divergence in the codebase -- scanCard() (src/hardware/sd_card.h) exposing per-attempt SPI results via persistent global getters (getAttempts()/getAttemptCount()) versus runSpiScalingBenchmark() (src/benchmark/benchmark.h) returning a self-contained SpiScaleResult -- is now explained by an 11-line doc comment directly on scanCard()'s declaration, so a reader encounters the rationale before being surprised by it.",
+        "Residual friction: scanCard()'s bool return value is still discarded at every call site (src/main.cpp rescan(), src/hardware/sd_card.cpp initSdHardware() path) -- functionally a void function wearing a bool signature; only the header doc comment reveals this is intentional, so a reader who starts from a call site rather than the header can still be briefly misled.",
+        "uiShowProgress(title, stage, done, total, float liveMBs = -1.0f) (src/ui/display_ui.h) uses a sentinel default (-1.0f) to mean 'no live rate available' rather than an Optional/bool flag, but this is applied consistently at both of its two call shapes in src/benchmark/benchmark.cpp (with and without showLiveRate) and documented enough not to cause confusion."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "scanCard()'s bool return value is still unused by every caller; the API is honest only because of a header doc comment rather than the signature itself (e.g. it could be void, or the doc comment could live closer to call sites). This is a very minor, already-documented wart rather than a live defect, so it caps the score just under the 'no material issues' tier without justifying a new open issue."
+    },
+    "authorization_consistency": {
+      "evidence": [
+        "src/ directory contains only main.cpp plus benchmark/, core/, hardware/, and ui/ modules \u2014 no HTTP routes, no server, no WiFi/network stack, no login flow anywhere in the tree.",
+        "Grep across src/ for WiFi|password|auth|login|permission|role|token|secret|credential|Server found nothing except an unrelated code comment ('Vendor hint only; not an authenticity guarantee.' in card_identity.cpp, referring to SD card manufacturer ID heuristics, not access control) and the expected Serial.begin(115200) UART init call.",
+        "The application is a single-binary ESP32 firmware flashed to one physical device with a touchscreen; it has no concept of users, sessions, roles, or remote callers \u2014 the only 'caller' is the person holding the device.",
+        "No database, no RLS-style tables, no service-role/admin bypass paths, and no permission string literals exist anywhere in the codebase for this dimension's look_for patterns to apply to."
+      ],
+      "impact_scope": "codebase",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "None found. This dimension does not apply to this codebase: CYD SD Tester is single-user embedded firmware for a physical microSD diagnostic device with no network interface, no multi-user model, and no protected resources of any kind, so there is no authorization surface for consistency to be judged against. The score reflects genuine absence of the concern rather than an untested or hidden risk."
+    },
+    "ai_generated_debt": {
+      "evidence": [
+        "Headers flagged by the mechanical scanner for high comment_ratio (benchmark.h 0.64, sd_card.h 0.53, card_identity.h 0.54, card_format.h 0.56, touch_calibration.h 0.56, ui_geometry.h 0.3) contain WHY-level design-rationale comments, not restated code: sd_card.h explains why scanCard() returns bool-but-callers-ignore-it vs runSpiScalingBenchmark()'s self-contained result (persistent queryable state vs one-shot display); touch_calibration.h documents the X/Y axis swap caused by physical touch-panel mounting; benchmark_internal.h documents why DMA allocation lives in hardware/ instead of benchmark/ (dependency-direction constraint)",
+        "Serial.printf calls throughout sd_card.cpp (printCardReport), benchmark.cpp (printBenchmarkResult), spi_scale_benchmark.cpp are the tool's actual diagnostic output for an SD-card tester, not nosy entry/exit or object-dump logging",
+        "recordSdError() (src/hardware/sd_card.h/.cpp) is called uniformly from sd_card.cpp's scanCard() and spi_scale_benchmark.cpp instead of duplicated inline error-capture blocks -- the previously-flagged boilerplate duplication stays fixed",
+        "touch.cpp's readTouch() has no unconditional debug prints on the hot sampling path -- the previously-flagged nosy logging stays removed",
+        "Function names are domain-specific throughout (scanCard, cardTypeName, allocateDmaBuffer, mapTouchToScreen, computeBarFillWidth, recordSdError) with no generic handleX/processX/doOperation placeholders anywhere in src/",
+        "No pass-through wrapper functions found; helpers like runChunkedIo (benchmark.cpp) and the drawing helpers in display_ui_internal.cpp add real behavior (timing, progress callbacks, shared drawing primitives), not blind forwarding",
+        "Only trace defensive habit found: spi_scale_benchmark.cpp guards `if (buffer) free(buffer); if (sector0) free(sector0);` before calling free() on pointers that are already safe to free when null -- trivial, single-line, no real cost to a reader"
+      ],
+      "impact_scope": "codebase",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "Only a cosmetic trace remains: redundant null-guards before free() calls in spi_scale_benchmark.cpp (free(nullptr) is already a no-op), which is the sole remaining hint of defensive-check-on-already-safe-values. It's too trivial to warrant a tracked issue but keeps the score just under exemplary."
+    },
+    "incomplete_migration": {
+      "evidence": [
+        "No TODO/FIXME/DEPRECATED/legacy/migrate markers exist anywhere under src/ (grep across all .cpp/.h returned zero matches; only third-party libdeps contain such markers)",
+        "README.md documents three prior migrations (BENCH+SCALE button merge into one BENCH menu, filesystemBytes -> filesystemDataBytes rename, removal of dead experimental raw-benchmark toggles) and grepping for the old symbol names (filesystemBytes, lastTitle, rawChunk, bestChunk) finds zero leftover references in src/",
+        "display_ui.h's HomeAction/BenchMenuAction enums reflect only the new unified BENCH menu (BenchmarkMenu, Quick, Scale, Back) with no residual separate-button code path",
+        "Only one static_cast exists nowhere in src/ -- all casts are uniformly C-style, confirming the previously-flagged stray static_cast (per historical_review_issues) was fully normalized rather than left as a half-finished cast-style migration",
+        "core/config.h defines two similar-looking speed tables, SPI_SPEEDS (20/10/4/1 MHz, used by scanCard()'s normal qualification) and SPI_SCALE_SPEEDS (40/20/10/4/1 MHz, used only by the SPI-scaling benchmark) -- this looks at first glance like an incomplete consolidation of one speed list into two, but README.md's 'v0.7.1' section and the surrounding code comments explicitly document it as a deliberate, permanent split (normal scans stop testing an unreliable 40MHz, the diagnostic scaling benchmark still probes it)",
+        "platformio.ini's two environments (env:native for host-run Unity tests via build_src_filter, env:cyd for the real firmware) are a clear, intentional, actively-maintained split rather than a stale or partial platform migration"
+      ],
+      "impact_scope": "codebase",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "The SPI_SPEEDS vs SPI_SCALE_SPEEDS parallel constant tables in src/core/config.h could momentarily read as an abandoned consolidation to a developer who hasn't yet found the explaining comment/README section; this is the only friction point found and it is already well-documented, not left ambiguous."
+    },
+    "package_organization": {
+      "evidence": [
+        "src/ splits cleanly into core/ (2 files, app_types.h+config.h, avg_fan_in 9.0, avg_fan_out 0.5, no includes outside cstdint/cstddef and each other) -> hardware/ (10 files) -> {benchmark/ (7 files), ui/ (9 files)}, matching coupling_matrix direction: ui->hardware(9), benchmark->core(6), hardware->core(6), benchmark->hardware(5), ui->core(3) -- all point toward the shared kernel, no reciprocal edges from core/ or hardware/ back out",
+        "The prior util/ directory (flagged historically for holding hardware-only pure helpers alongside domain folders) is gone; card_format.*/card_identity.*/touch_calibration.* now live in hardware/, their sole consumer domain, and bench_math.h/ui_geometry.h correctly stay in benchmark/ and ui/ respectively -- the inconsistency is fully resolved",
+        "benchmark/benchmark.cpp includes \"../ui/display_ui.h\" and calls uiShowProgress() 4 times inside the shared runChunkedIo() helper (lines 9, 98, 139, 361, 429) -- this is the one backward coupling_matrix edge (benchmark->ui: 1) and it contradicts the codebase's own stated layering rule",
+        "benchmark/benchmark_internal.h's header comment explicitly states allocateDmaBuffer() lives in hardware/sd_card.h 'since hardware/ can't depend back on benchmark/' -- proving the team already enforces one-directional layering elsewhere, which makes benchmark/'s undocumented dependency on ui/ an inconsistency rather than a considered exception",
+        "spi_scale_benchmark.cpp and benchmark_raw.cpp (the other two benchmark/ files) do NOT include ui/ headers, so the ui coupling is isolated to one file/helper, not systemic across the domain folder",
+        "main.cpp (151 lines) is the only src/-root file and is PlatformIO's mandated entry point -- not a straggler under the package_organization rubric",
+        "test/ mirrors src/ 1:1 for the pure/testable modules (test_app_types, test_bench_math, test_card_format, test_card_identity, test_touch_calibration, test_ui_geometry) -- standard test-mirroring, not a defect",
+        "benchmark/ and ui/ each use a private *_internal.h header (benchmark_internal.h, display_ui_internal.h) to share helpers within the folder without exposing them on the public header -- the same pattern applied consistently in both domains"
+      ],
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor",
+      "confidence": "high",
+      "issues_preventing_higher_score": "One coupling-direction inconsistency remains: benchmark/ (domain/business logic) directly includes and calls into ui/ (presentation) for progress callbacks, breaking the otherwise strictly one-directional core<-hardware<-{benchmark,ui} dependency graph and contradicting the layering rule the codebase documents for itself elsewhere (benchmark_internal.h)."
+    },
+    "initialization_coupling": {
+      "evidence": [
+        "main.cpp::setup() runs initDisplay(); initTouch(); initSdHardware(); rescan(); in a single, linear, readable sequence with no hidden ordering \u2014 a developer can see the entire boot order in one place.",
+        "display_ui_internal.cpp's tft() returns a function-local static TFT_eSPI instance (Meyer's singleton), so the TFT object is safe to reference from any translation unit regardless of static-initialization order, avoiding the classic SIOF risk entirely.",
+        "hardware/sd_card.cpp keeps sd/info/attempts/cid/csd as file-scope static globals behind accessor functions (getSd(), getCardInfo(), getAttempts()); every consumer gates on card.cardOk/card.volumeOk or sd.card() rather than assuming initSdHardware()/scanCard() has already run, so misordering fails safely instead of crashing.",
+        "benchmark/benchmark_raw.cpp's rawReadAtCurrentSpeed() checks `if (!sd.card()) return false;` before touching the shared SdFs singleton \u2014 the previously-flagged unchecked dereference is fixed.",
+        "benchmark/spi_scale_benchmark.cpp's runSpiScalingBenchmark() calls scanCard() on both the early-failure path and the normal end-of-loop path to restore the shared SdFs singleton's state; this hidden side effect is now documented both on the declaration in benchmark.h ('Side effect: re-runs the full SPI qualification/mount scan...') and inline at the call site \u2014 the previously-flagged coupling defect is fixed.",
+        "core/config.h contains only constexpr compile-time constants (pins, sizes, speed tables) \u2014 no environment reads, no runtime-computed globals, no getter/stale-snapshot duplication.",
+        "No module reads another module's global before that module's init*() has plausibly run in the actual call graph; scanCard()/getSd()/getCardInfo() are only reachable from main.cpp after initSdHardware(), and tft()-based UI functions are only reachable after initDisplay().",
+        "holistic_context.scan_evidence.mutable_globals was empty for this run \u2014 no mechanical concern signals to adjudicate for this dimension."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "Two singleton hardware objects use different initialization styles for no documented reason: sd_card.cpp's SdFs/CardInfo/AttemptResult globals are eagerly constructed as file-scope statics (built before setup() runs, per Arduino's normal startup), while display_ui_internal.cpp's TFT_eSPI instance is lazily constructed inside the tft() accessor. Both are safe in practice, but the inconsistency means a developer can't predict from one singleton's pattern how the next one is built."
+    },
+    "design_coherence": {
+      "evidence": [
+        "scanCard() (src/hardware/sd_card.cpp) is decomposed into fillCardIdentity(), runConsistencyChecks(), and printCardReport() single-purpose helpers rather than one monolithic function, keeping the orchestrator's happy-path readable.",
+        "benchmark.cpp's runChunkedIo() is a single shared chunked-loop helper parameterized by a ChunkIoFn function pointer + void* context, replacing what a prior review found as three copy-pasted loops (timedFileWrite/timedFileRead/verifyFile now each just supply a chunk function and title/stage strings).",
+        "display_results.cpp's uiShowSpiScaleResult() is composed of small named steps (scaleGraphMaxSpeed, drawScaleGraphFrame, scalePointCoords, drawScalePoint, buildScaleSummary) instead of one long function mixing five drawing concerns.",
+        "runQuickBenchmark() (src/benchmark/benchmark.cpp) nests three levels deep (if(file) -> if(preallocOk && seekSet) -> per-step ifs) to express a sequential dependent write/read/verify pipeline; flattening with early returns would require repeating file.close()/cleanup at each exit point, so the nesting reads as inherent to the single-cleanup-point requirement rather than a coherence defect.",
+        "scanCard() (sd_card.cpp) and runSpiScalingBenchmark() (spi_scale_benchmark.cpp) still share a near-identical reset+cardBegin+per-speed-error-logging scaffold; this is pre-existing, documented, accepted debt (wontfix) with only two call sites, not a new defect.",
+        "src/core/app_types.h's CardInfo struct has ~22 fields, but it is a single coherent domain aggregate (everything known about one scanned card: identity, capacity, filesystem, error state) rather than a mixed-concern grab bag or an unnecessary parameter object.",
+        "Home/benchmark-menu button hit-testing (display_ui.cpp) uses individually named constexpr Button values (BTN_SCAN, BTN_BENCH, BTN_DIAG, etc.) checked one-by-one rather than a data-driven array+loop; with only 3 buttons per screen and a distinct action per button, this keeps the button-to-action mapping directly traceable rather than obscuring it behind indices."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "No new defects found, but the codebase stops short of exemplary: two speed-iterating loops (scanCard/runSpiScalingBenchmark) still share an unabstracted scaffold (accepted as documented debt, not re-flagged), and runQuickBenchmark's sequential dependent-step pipeline carries three levels of nesting that a newcomer must read carefully to track which flags gate which step."
+    },
+    "contract_coherence": {
+      "evidence": [
+        "src/hardware/sd_card.h: scanCard() carries a 12-line comment explaining its bool return is unchecked by design, and explicitly contrasts its persistent-state contract with runSpiScalingBenchmark()'s one-shot return contract.",
+        "src/benchmark/benchmark.h: runSpiScalingBenchmark() documents its hidden scanCard() re-run side effect and what callers can assume about getCardInfo()/getSd() afterward, but the adjacent runQuickBenchmark() in the same header has zero doc comment despite similarly non-trivial behavior (creates/removes a test file, writes to Serial, returns an all-default BenchmarkResult on early failure).",
+        "src/core/app_types.h: BenchmarkResult.cleanupOk defaults to true while every sibling *Ok field (preallocOk, fileWriteOk, fileReadOk, verifyOk, rawReadOk) defaults to false -- an inconsistent 'success until proven otherwise' polarity within the same field family, and it is never read by any caller (grep shows only the single write site in benchmark.cpp, no display or log consumer).",
+        "src/core/app_types.h / src/hardware/sd_card.cpp: CardInfo.csdOk is set true in fillCardIdentity() alongside cidOk but is never read anywhere in the codebase, unlike cidOk which gates identityCheckName().",
+        "getCardInfo()/getSd()/getAttempts()/getAttemptCount() in sd_card.h are all pure reads over static module state -- no getX() function was found that mutates state under a getter name.",
+        "uiHitTestHome()/uiHitTestBenchMenu() in display_ui.h are pure (no side effects), consistent with their 'hitTest' naming; uiShow*/uiDraw* functions are consistently side-effecting draw calls, matching their verb prefixes."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "Two isolated but real inconsistencies remain: (1) benchmark.h documents one sibling function's return/side-effect contract exhaustively while leaving the other undocumented, and (2) two struct fields (cleanupOk, csdOk) are written but never consumed, breaking the otherwise-reliable pattern that every other *Ok field in the same structs drives visible UI/log output."
+    },
+    "logic_clarity": {
+      "evidence": [
+        "Guard-clause style is applied consistently across failure paths (scanCard(), runQuickBenchmark(), rawReadAtCurrentSpeed(), removeTestFile(), runSpiScalingBenchmark()) so a reader can trust that early returns mean 'stop here', with no dead code following any return/break.",
+        "runChunkedIo() (benchmark.cpp) is the single shared control-flow path for the write/read/CRC-verify passes, driven by a ChunkIoFn function pointer, so the three passes cannot silently diverge in behavior.",
+        "src/hardware/sd_card.cpp: fillCardIdentity() sets both info.cidOk=true and info.csdOk=true together (line ~160-161), but only cidOk is ever read again (printCardReport() line 232, identityCheckName() card_identity.cpp line 78); csdOk is never consumed by any production code path, only asserted to be false-by-default in test_app_types.cpp.",
+        "src/core/config.h defines RAW_TEST_SECTORS (BENCH_TEST_SIZE / SECTOR_SIZE) but no .cpp or test file references it anywhere in the repository; rawReadAtCurrentSpeed() instead recomputes sectors from bytesToRead directly.",
+        "No always-true/false conditions, no identical if/else branches, and no async-without-await patterns were found across the 20 source files reviewed (main.cpp, hardware/, benchmark/, ui/)."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "Two isolated dead-state artifacts (an unused CardInfo::csdOk boolean that mirrors cidOk without ever gating behavior, and an unreferenced RAW_TEST_SECTORS constant) are the only things keeping this below a clean-sweep score; neither affects correctness or observable control flow."
+    },
+    "type_safety": {
+      "evidence": [
+        "AttemptStage (core/app_types.h) is a genuine enum class and every consumer (card_identity.cpp's attemptStageName switch, display_diagnostics.cpp's `a.stage == AttemptStage::Passed` comparisons, main.cpp's HomeAction/BenchMenuAction switches) compares/switches on the typed enum value, never on a raw int \u2014 no enum-bypass pattern found anywhere in src/",
+        "cardType and fsType in CardInfo are uint8_t rather than an enum class, but this is a deliberate, documented choice: SdFat exposes SD_CARD_TYPE_* and FAT_TYPE_* as plain library macros, not a C++ enum, and sd_card.h documents this reasoning inline ('Needs SD_CARD_TYPE_*/FAT_TYPE_* from SdFat, same reasoning as cardTypeName()') \u2014 cardTypeName()/fsName() switch over the macro values and both have a default case",
+        "A prior-round type_safety fix (fsName() raw literals 12/16/32/64 replaced with SdFat's FAT_TYPE_* constants) is confirmed still in place in src/hardware/sd_card.cpp lines 65-82",
+        "A prior-round fix (one stray static_cast in card_format.cpp) is confirmed resolved: grepping all of src/ for static_cast|reinterpret_cast|dynamic_cast returns zero matches \u2014 the codebase now uniformly uses C-style casts",
+        "Numeric format-string discipline is applied consistently: every uint32_t/uint64_t value passed to a %lu/%08lX printf specifier is explicitly cast to (unsigned long) first (sd_card.cpp, benchmark.cpp, benchmark_raw.cpp, display_results.cpp), rather than relying on an implicit/undefined-behavior-prone conversion",
+        "benchmark.cpp's ChunkIoFn callback type takes `void* context`; only chunkReadAndCrc uses it, casting it back to `uint32_t*` with an unchecked C-style cast, while chunkWrite/chunkRead both take and ignore the same untyped parameter \u2014 a small, self-contained type-erasure spot in an otherwise well-typed module",
+        "Output parameters (errorCode/errorData, screen coordinates, speed results) are passed as typed references (uint8_t&, int&, float&) rather than via void* or generic containers throughout hardware/, benchmark/, and ui/"
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "One narrow type-erasure spot remains (the void* context parameter on ChunkIoFn in benchmark.cpp, used only by chunkReadAndCrc) \u2014 a minor, low-confidence gap rather than something that undermines developer trust in type annotations across the codebase."
+    }
+  },
+  "dimension_judgment": {
+    "cross_module_architecture": {
+      "dimension_character": "The dependency graph is deliberately layered (core under hardware under benchmark/ui) and that direction is both stated in code comments and verified by grep across every hardware/*.cpp file; the pure-vs-hardware-dependent split is enforced by the native test build filter rather than just claimed in prose. The one blemish is benchmark.cpp calling directly into ui/display_ui.h for progress rendering, a single-file exception to the pattern its own sibling files and its own neighboring header's stated rule both avoid.",
+      "score_rationale": "This sits at the 90 anchor ('mostly coherent with isolated boundary drift') rather than higher: there are no cycles, no god-module behavior concentration, and the documented pure/impure and layering contracts hold up against actual includes, but the benchmark->ui edge is a genuine, unaddressed direction violation even though it is confined to one function family in one file. It does not reach the 80 anchor because it is a single, well-contained instance rather than a recurring pattern across modules."
+    },
+    "high_level_elegance": {
+      "dimension_character": "The top-level decomposition (core/hardware/benchmark/ui) is domain-aligned, dependency direction between those packages is clean and one-directional, and main.cpp is exactly the thin dispatcher the docs claim it is. Headers carry unusually thorough rationale comments explaining why boundaries sit where they do, which is a real asset for a new engineer. The one blemish is that CLAUDE.md's architecture writeup wasn't updated after a prior cleanup removed src/ui/diagnostics.*, so it now describes a file and function that no longer exist.",
+      "score_rationale": "This sits just below the 90-100 'strong/exemplary' band on the global anchors: a developer would trust the decomposition and find it self-explanatory almost everywhere, but the stale diagnostics.* paragraph in CLAUDE.md is exactly the kind of 'reference docs match runtime reality' failure the rubric calls out, and it would cost a new engineer real time. It's an isolated, single-file, single-edit fix rather than a systemic problem, so it caps the score just under the exemplary range rather than pulling it into 'uneven'."
+    },
+    "convention_outlier": {
+      "dimension_character": "This is a small, disciplined codebase where naming case, include-guard style, internal-linkage idiom, and struct-vs-class usage are applied with near-total uniformity across all 29 files, and the prior review round already eliminated the worst outliers (touch.*'s compact formatting, touch_calibration.cpp's anonymous namespace). What remains is a narrower, mechanical residue of that same formatting cleanup: three hardware-layer file pairs (sd_card, card_format, card_identity) still use the pre-reform compact single-line signature style instead of the one-arg-per-line style that is now dominant everywhere else, and one of them (card_identity.cpp) is even internally inconsistent about which style it uses from function to function. A developer moving between ui/ or benchmark/ and these three hardware files would notice the visual shift, but nothing here is misleading or behaviorally inconsistent -- it is a leftover formatting nit, not a structural or protocol drift.",
+      "score_rationale": "This sits just below the 90 anchor ('mostly consistent with minor style islands that don't cause real confusion') because the drift is real, confirmed, and traceable to an incomplete application of the same reform the previous round already validated as correct -- but it is narrowly scoped to signature wrapping in 3 of roughly 14 header/source module pairs, is purely cosmetic, and would take a single mechanical reformatting pass to close. There is no evidence of naming drift, mixed export patterns, inconsistent plugin/module organization, or divergent behavioral protocols anywhere else in the tree, which keeps the score comfortably in the 'solid, minor rough edge' band rather than lower."
+    },
+    "error_consistency": {
+      "dimension_character": "Error handling is data-driven and exception-free: failures propagate as bool return values plus explicit error-code fields, captured through one shared recordSdError() helper used consistently across scanCard() and the SPI-scaling benchmark. That discipline breaks down for the quick file benchmark: BenchmarkResult carries no error-code fields at all, and a failed sd.open() there produces no log line whatsoever, unlike every other SD failure path in the codebase.",
+      "score_rationale": "The card-qualification and SPI-scaling paths exemplify the ~90 anchor: predictable failure propagation with preserved error context via one shared helper, and no mixed throw/return/Result strategies anywhere. But the quick-benchmark file I/O path never captures or logs an SD error code, and one branch (sd.open() failure) logs nothing at all \u2014 exactly the 'developer encounters mixed strategies across related code paths' pattern at the 80 anchor. Because the gap is confined to one struct/file rather than pervasive, the score sits above 80 but below 90."
+    },
+    "naming_quality": {
+      "dimension_character": "Naming across this small codebase is exceptionally disciplined: booleans consistently carry an Ok suffix, getters are pure and side-effect-free, ui-prefixed screen functions are cleanly separated from unprefixed orchestration in main.cpp, and doc comments proactively head off ambiguity between near-synonym functions (scanCard vs runSpiScalingBenchmark). The strengths are systemic rather than isolated - they hold across hardware/, benchmark/, and ui/ alike - and the only defect found is a single, low-stakes abbreviation inconsistency in touch coordinate parameter names.",
+      "score_rationale": "This lands at the 90 anchor (mostly precise, minor friction) rather than 100 (no material issues) because of the sx/sy vs screenX/screenY drift, which is real but strictly local and trivial to fix. Every other function and field name observed lets a developer correctly predict behavior without opening the implementation, which is well above the 80 anchor's 'regularly encounters names that don't communicate intent' bar - there is nothing regular about the one gap found here."
+    },
+    "abstraction_fitness": {
+      "dimension_character": "Every abstraction in this codebase \u2014 the pure/testable helper modules, the shared recordSdError()/allocateDmaBuffer()/runChunkedIo() helpers, and the internal-vs-public header split \u2014 traces back to a documented, multi-call-site need rather than speculative generality, and the prior review round's fixes (deduplicating DMA allocation, extracting the chunked-I/O loop, inlining the single-caller diagnostics.cpp module) removed the codebase's only real abstraction-fitness defects. What remains is a small, procedural C++ codebase with no classes, no interfaces, no facades, and no wide option bags to critique.",
+      "score_rationale": "This sits at the top of the scale (90=strong, 100=exemplary) because a developer would benefit from essentially every layer of indirection present and would not encounter pass-through wrappers, single-implementation interfaces, or leaky boundaries anywhere in the 29-file tree. It falls short of 100 only because the internal-header privacy convention is comment-enforced rather than structurally enforced, a genuine but very minor and currently harmless gap."
+    },
+    "dependency_health": {
+      "dimension_character": "This is a minimal, purposeful dependency footprint typical of a small single-purpose embedded firmware project: exactly two external libraries, each owning a distinct, non-overlapping responsibility (TFT_eSPI for display, SdFat for the SD/filesystem work that is the app's entire reason for existing), both exercised extensively and pinned to exact versions. There is no duplication, no unused dependency, and no evidence of a heavy library pulled in for light use.",
+      "score_rationale": "This sits near the top of the anchor scale (90=strong, 100=exemplary): the previously-flagged unpinned-library issue is confirmed fixed in the current platformio.ini, and no new dependency-health defects were found across the two-library, well-scoped dependency set. The score stops just short of 100 only because the `espressif32` platform version itself remains unpinned, leaving a small residual version-drift risk of the same category as the already-fixed issue."
+    },
+    "low_level_elegance": {
+      "dimension_character": "Function and class internals in this codebase are direct, precisely scoped, and use a consistent extraction style: small named helpers carry single responsibilities (drawScalePoint, scalePointCoords, runChunkedIo, chunkWrite/chunkRead/chunkReadAndCrc), state mutation is confined to the functions that own it, and guard clauses appear only at real hardware/allocation boundaries rather than defensively everywhere. All three previously-flagged issues for this dimension (triplicated chunking loops, a 185-line five-concern function, and clashing statement-fragmentation styles) are verifiably fixed in the current code and have not regressed.",
+      "score_rationale": "This sits near the top of the low_level_elegance anchor scale (90 = mostly clean craft with isolated rough edges) rather than at the 100 exemplary mark, because a handful of very minor rough edges remain (e.g., one nested ternary) even though they carry no real cost to a developer reading the code. There is no recurring friction, no defensive sprawl, and no monolith/micro-fragmentation imbalance anywhere in the reviewed src/ tree, which is why the score sits well above the 80 'solid but uneven' band."
+    },
+    "mid_level_elegance": {
+      "dimension_character": "Handoffs in this codebase are unusually deliberate for its size: one shared data-shape header, isolated and independently-tested pure translation helpers at every hardware/UI boundary, a uniform draw/hitTest pairing convention across all screens, and boundary side effects (like scanCard's hidden rescan) documented directly on the declarations that expose them. The two mid_level_elegance issues from the prior review round (accidental transitive includes, an undocumented rescan side effect) are both durably fixed rather than papered over. The only remaining wrinkle is benchmark/ calling directly into ui/ for progress updates, a single, well-scoped exception to an otherwise consistent orchestration pattern.",
+      "score_rationale": "This sits above the 90 anchor ('mostly good seams with minor friction') because the seam design is not just consistent but explicitly self-documenting at nearly every boundary, and previously-identified glue-code entropy has been structurally resolved rather than just reformatted. It falls short of 100 because the benchmark->ui progress-reporting call is a genuine, if minor, deviation from the main-as-composer pattern used everywhere else, and the global getCardInfo()/getSd() singleton handoff \u2014 while documented \u2014 still makes cross-module state implicit rather than passed explicitly."
+    },
+    "test_strategy": {
+      "dimension_character": "A developer working here can trust the test suite almost completely: it covers every module the codebase itself has identified as pure/host-testable, runs in CI on every push, and is written with real edge-case discipline (boundaries, clamping, chunk-splitting) rather than shallow smoke checks. The one blemish is a missed extraction -- newly-split pure math in display_results.cpp that mirrors the already-tested ui_geometry.cpp pattern but was left untested -- and the remaining hardware-coupled surface is untested by necessity and openly documented as such in CLAUDE.md rather than glossed over.",
+      "score_rationale": "This sits at the 'strong, minor gap' anchor (90) rather than 'solid but uneven' (80): there is no test-production coupling, no snapshot overuse, no fragility, and coverage of the testable surface is effectively complete and CI-enforced. It is pulled slightly below 90 by the single, concrete, high-confidence gap in display_results.cpp, which is exactly the kind of pure logic the project's own precedent says should be extracted and tested."
+    },
+    "api_surface_coherence": {
+      "dimension_character": "This is a small, disciplined embedded API surface (roughly 40 public functions across 13 headers) with strong, uniform shape conventions: bool+out-ref for fallible hardware reads, (inputs, char* out, size_t outSize) for every string-producing helper, and const-reference passing for all shared state structs. The one genuine shape divergence in the codebase -- scanCard()'s persistent-state model versus runSpiScalingBenchmark()'s self-contained result -- was surfaced by a prior review round and is now thoroughly documented at the point of declaration, so it reads as a deliberate design choice rather than an inconsistency.",
+      "score_rationale": "The codebase sits above the 90 anchor ('strong, minor friction or isolated rough edges') rather than at 100, because scanCard()'s unused bool return is real (if minor and now well-documented) friction, and reaching the design rationale requires reading a doc comment rather than the signature itself. There are no recurring irregularities, no mixed sync/async concerns (single-threaded loop), no parameter-order drift, and no functions overloaded by argument type, so nothing pulls the score down toward the 80 'recurring friction' tier."
+    },
+    "authorization_consistency": {
+      "dimension_character": "This dimension is not applicable to the codebase: CYD SD Tester is single-user ESP32 firmware running entirely on one physical device with a touchscreen, with no network stack, no server endpoints, no user accounts, no sessions, and no data store that would ever need row-level or permission-based access control. There are no route handlers, no permission literals, and no service-role bypass paths for auth patterns to be applied consistently or inconsistently to.",
+      "score_rationale": "A developer reviewing this codebase for authorization concerns would find zero surface area to evaluate \u2014 not a case of hidden or undocumented gaps, but a genuine absence of any construct (network boundary, multi-user model, protected resource) that authorization logic would attach to. Per the reviewer note, this is honestly reported as inapplicable rather than manufacturing findings, so the score sits at the top anchor with high confidence and no defects."
+    },
+    "ai_generated_debt": {
+      "dimension_character": "The codebase shows almost none of the LLM-hallmark patterns this dimension looks for: comments consistently explain non-obvious WHY-level design decisions (return-shape rationale, hardware axis-swap quirks, dependency-direction constraints) rather than restating adjacent code, debug output is limited to the tool's genuine diagnostic purpose, and the one previously-flagged boilerplate duplication (SD error recording) is now centralized in a shared helper. Naming is domain-specific everywhere, and no pass-through wrappers or generic-name placeholders were found in any of the 29 source files.",
+      "score_rationale": "This sits at the top of the anchor scale (90-100: 'mostly clean' to 'purpose-driven with no ceremony') because a developer's attention here is spent entirely on real domain logic -- SPI qualification, chunked I/O, touch coordinate mapping -- with essentially zero filler ceremony to mentally filter. It falls just short of a perfect score only because of one truly trivial, single-line defensive habit (redundant null-checks before free()) with no measurable impact on comprehension."
+    },
+    "incomplete_migration": {
+      "dimension_character": "Incomplete migration is essentially a non-issue in this codebase: every migration described in README.md's version history (unifying the BENCH/SCALE buttons, renaming filesystemBytes to filesystemDataBytes, removing dead experimental raw-benchmark toggles, normalizing cast style) shows no leftover old-named symbols, orphaned files, or dual code paths anywhere in the current src/ tree. There are no deprecated markers, no stale migration TODOs, and no compatibility shims serving callers that no longer need them.",
+      "score_rationale": "This lands near the top of the global anchor scale (90=strong, 100=exemplary): a developer here would encounter zero dual-path confusion or deprecated-but-called code, which is what separates a 90 from higher. The only thing holding it back from a full 100 is a single spot (the two SPI speed-count tables) that requires a comment/README read to confirm it is intentional rather than incomplete cleanup -- a very minor, already-mitigated friction point rather than an actual defect, so no issues are filed against it."
+    },
+    "package_organization": {
+      "dimension_character": "The four top-level domains (core/, hardware/, benchmark/, ui/) map cleanly onto real ownership boundaries, and the previous review round's util/ dumping-ground problem has been fully resolved by folding single-consumer pure helpers into their owning domain. The one remaining wrinkle is a single backward coupling edge -- benchmark/ reaching into ui/ to report progress -- that is isolated to one file but breaks the layering discipline the codebase otherwise enforces and documents explicitly for itself.",
+      "score_rationale": "This sits at the 90 anchor (mostly coherent with minor placement outliers): a developer can predict where nearly everything lives and the directory graph is acyclic except for one edge. It is held below higher scores because that one edge (benchmark->ui) is a real, evidenced coupling-direction failure per the rubric, not just a style nit, and it undermines a rule the team itself states in benchmark_internal.h."
+    },
+    "initialization_coupling": {
+      "dimension_character": "Boot order lives entirely in main.cpp's setup(), which is short, linear, and hides nothing. Shared hardware state (the SdFs/CardInfo globals in sd_card.cpp, the TFT_eSPI singleton behind tft()) is reached only through accessor functions, and callers defensively check cardOk/volumeOk/sd.card() rather than trusting call order blindly. The two init-coupling defects a prior review round found \u2014 the SPI-scaling benchmark's implicit rescan and the unchecked sd.card() dereference in rawReadAtCurrentSpeed() \u2014 are both fixed and now documented at their declarations, so this round found no fresh instances of that failure class.",
+      "score_rationale": "This sits near the top of the scale (anchors: 90 = mostly stable with limited boot-order fragility, 100 = no boot-order worries at all): a developer can read setup() once and trust the entire hardware bring-up sequence, and the defensive gating on card/volume state prevents the 'used before ready' bug class the 80-anchor describes. It stops short of 100 only because the two hardware singletons (SdFs-based globals vs. the lazy tft() accessor) are constructed with genuinely different patterns without any documented reason, a small but real inconsistency a new contributor adding a third singleton would have to arbitrate."
+    },
+    "design_coherence": {
+      "dimension_character": "This is a small (29-file, ~3.4k LOC) embedded C++ codebase where a prior review round already extracted the worst offenders: the triplicated chunked I/O loop became one runChunkedIo() helper, the SPI-scale result screen was split into five named drawing steps, and orchestration functions (scanCard, runQuickBenchmark) delegate to focused single-purpose helpers rather than doing everything inline. What remains is largely consistent: functions map to one responsibility, parameter lists reflect genuine domain groupings (CardInfo as a scan-result aggregate, not an arbitrary bag), and the one remaining structural duplication (scanCard vs runSpiScalingBenchmark's speed-iteration scaffold) is a previously-reviewed, deliberately-accepted tradeoff given only two call sites.",
+      "score_rationale": "Against the anchors, this sits closer to 90 (strong, minor isolated friction) than 80 (solid but uneven): a developer reading any given file finds a single clear responsibility and consistent extraction style, and no function mixes unrelated concerns. It falls short of 100 because runQuickBenchmark's three-level nested dependent-step pipeline and the still-present (though accepted) scaffold duplication between scanCard and runSpiScalingBenchmark are the kind of isolated rough edges the 90-anchor describes, not because of any systemic design problem."
+    },
+    "contract_coherence": {
+      "dimension_character": "This is a codebase where contracts are, on the whole, unusually well-tended for an embedded C++ project: functions with non-obvious return semantics or hidden side effects (scanCard(), runSpiScalingBenchmark()) carry explicit, carefully-reasoned doc comments at their declaration site, and every getX() function found is a genuinely pure read. The defects that remain are narrow and isolated rather than systemic: one documentation asymmetry between two sibling declarations in benchmark.h, and two struct fields (cleanupOk, csdOk) whose write-only status quietly breaks the otherwise-trustworthy convention that *Ok fields drive visible behavior.",
+      "score_rationale": "The codebase clears the 90 anchor ('a developer would trust what they see, with only minor friction') because the side-effect-heavy, easy-to-misread functions are exactly the ones that got documented, and no return-type lies or getter/mutator mismatches were found anywhere in the ~3.3k LOC surface. It falls short of 100 because the two issues above are real, verifiable gaps a careful developer would trip on -- the runQuickBenchmark() doc gap right next to a heavily-documented sibling, and dead-but-declared status fields that look meaningful but aren't."
+    },
+    "logic_clarity": {
+      "dimension_character": "Control flow throughout this codebase is direct: guard clauses dominate failure handling, the benchmark chunking loop was already consolidated into one shared helper, and no branch does something other than what it visibly says. The only blemishes are two small pieces of dead state (a write-only boolean twin of a used field, and an unreferenced named constant) that create a slightly misleading impression without ever causing incorrect behavior.",
+      "score_rationale": "This sits just below the 100 (exemplary, no material issues) anchor and close to the 90 anchor ('mostly clear with isolated simplification opportunities') because the two defects found are real but trivial and isolated -- a developer tracing scanCard()'s identity-fields or the raw-benchmark sizing math would briefly wonder why csdOk/RAW_TEST_SECTORS exist without being consumed, but nothing here misleads about actual runtime behavior or hides a bug."
+    },
+    "type_safety": {
+      "dimension_character": "This is a small, disciplined embedded C++ codebase where declared types are a reliable predictor of runtime behavior: the one real domain enum (AttemptStage) and the UI action enums are always switched/compared on their typed values, casts are uniform (no static_cast/reinterpret_cast anywhere), and numeric-to-printf conversions are explicitly and consistently cast rather than left implicit. The only soft spot is a single void*-context callback parameter in benchmark.cpp that erases type information for one of three callback implementations. Both type_safety issues flagged in the prior review round (raw FAT-type literals, a stray static_cast) are verifiably fixed and have not regressed.",
+      "score_rationale": "Per the global anchors, this sits at 'strong' (90) rather than 'exemplary' (100): a developer can trust type annotations here with only isolated friction, matching the void*-context spot and the (well-justified but still uint8_t-typed) SdFat card/fs type fields. There is no pattern of Optional-that-can't-be-None, missing annotations on public APIs, or enum bypass, so the score sits comfortably above the 80 'regular friction' band."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "cross_module_architecture",
+      "identifier": "benchmark_calls_ui_directly",
+      "summary": "benchmark.cpp's runChunkedIo() calls uiShowProgress() directly, coupling the benchmark logic layer to the ui presentation layer",
+      "confidence": "medium",
+      "suggestion": "Have runChunkedIo() accept a simple function-pointer/lambda progress callback (matching the existing ChunkIoFn pattern already used in the same file for chunkWrite/chunkRead/chunkReadAndCrc) that main.cpp or benchmark.cpp's caller wires to uiShowProgress, instead of benchmark.cpp including ui/display_ui.h directly. This keeps benchmark/ dependent only on core/ and hardware/, matching the rule already documented in benchmark_internal.h, without introducing a heavier abstraction than the codebase already uses elsewhere.",
+      "related_files": [
+        "src/benchmark/benchmark.cpp",
+        "src/ui/display_ui.h"
+      ],
+      "evidence": [
+        "src/benchmark/benchmark.cpp:9 includes \"../ui/display_ui.h\", and runChunkedIo() calls uiShowProgress(title, stage, done, BENCH_TEST_SIZE, ...) at lines 98, 139 (plus two more call sites later in the file at ~361/429) to render live progress mid-loop",
+        "src/benchmark/benchmark_internal.h states the project's own rule for this direction one file over: 'hardware/ can't depend back on benchmark/' -- the same reasoning (lower layers must not depend on higher/sibling layers) is violated here by benchmark depending on ui",
+        "Sibling files spi_scale_benchmark.cpp and benchmark_raw.cpp implement the other two benchmark passes without any ui/ include, so this is not a subsystem-wide pattern but a one-off in a single file"
+      ],
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor"
+    },
+    {
+      "dimension": "high_level_elegance",
+      "identifier": "claudemd_stale_diagnostics_module",
+      "summary": "CLAUDE.md documents a deleted src/ui/diagnostics.* module and showDiagnosticsScreen() function",
+      "confidence": "high",
+      "suggestion": "In CLAUDE.md's Architecture section, replace the `diagnostics.*` bullet with a note that diagnostics glue is inlined as the static showDiagnostics() helper in main.cpp (next to rescan() and runBenchMenu()), matching how the file is actually organized today.",
+      "related_files": [
+        "CLAUDE.md",
+        "src/main.cpp"
+      ],
+      "evidence": [
+        "CLAUDE.md lines 101-102: '- `diagnostics.*` \u2014 thin glue (`showDiagnosticsScreen()`) composing `uiShowDiagnostics()` + `uiWaitForTap()` for `main.cpp`'s one call site.'",
+        "src/ui/diagnostics.h and src/ui/diagnostics.cpp do not exist in the repository.",
+        "The described logic now lives as a static showDiagnostics() function directly in src/main.cpp (lines 14-22), which calls uiShowDiagnostics() and uiWaitForTap() inline."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "convention_outlier",
+      "identifier": "compact_signature_style_island",
+      "summary": "sd_card.*, card_format.*, and card_identity.* keep compact single-line signatures, unlike the rest of src/",
+      "confidence": "medium",
+      "suggestion": "Reformat the listed declarations/definitions in sd_card.h/.cpp, card_format.h, and card_identity.h to one-argument-per-line, matching the exact treatment touch.h/touch.cpp already received in the prior review pass. This is a pure whitespace change with no behavioral impact.",
+      "related_files": [
+        "src/hardware/sd_card.h",
+        "src/hardware/sd_card.cpp",
+        "src/hardware/card_format.h",
+        "src/hardware/card_identity.h"
+      ],
+      "evidence": [
+        "sd_card.h: `SdSpiConfig makeSdConfig(uint32_t hz);`, `const char* cardTypeName(uint8_t type, uint64_t capacityBytes);`, `const char* fsName(uint8_t type);` are all single-line, and sd_card.cpp defines them the same way.",
+        "card_format.h: `void formatHumanBytes(uint64_t bytes, char* out, size_t outSize);` and `void formatSpiClock(uint32_t hz, char* out, size_t outSize);` are single-line declarations.",
+        "card_identity.h: `const char* attemptStageName(AttemptStage stage);`, `const char* resolveVendor(uint8_t mid);`, `const char* identityCheckName(const CardInfo& card);` are all single-line.",
+        "Every comparable header elsewhere (touch.h, touch_calibration.h, bench_math.h, ui_geometry.h, display_ui.h, benchmark.h) wraps every parameter onto its own line even for equally short or shorter signatures, e.g. touch.h's `bool readTouch(int& sx, int& sy);` and bench_math.h's `float throughputMBs(size_t bytes, uint64_t ioMicros);`.",
+        "The previous review round's fix note for touch.h/touch.cpp explicitly names one-arg-per-line as 'the dominant one-arg-per-line style used throughout the rest of src/', confirming this is the established norm that sd_card.*/card_format.*/card_identity.* still don't follow."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "convention_outlier",
+      "identifier": "card_identity_and_header_decl_def_mismatch",
+      "summary": "identityCheckName() and header() are defined with wrapped signatures that contradict their own single-line header declarations and (for identityCheckName) their file-siblings",
+      "confidence": "low",
+      "suggestion": "Make identityCheckName's definition match its own header declaration and its two file-sibling functions (single line), and do the same for header() in display_ui_internal.cpp so its definition matches its own declaration in display_ui_internal.h.",
+      "related_files": [
+        "src/hardware/card_identity.cpp",
+        "src/hardware/card_identity.h",
+        "src/ui/display_ui_internal.cpp",
+        "src/ui/display_ui_internal.h"
+      ],
+      "evidence": [
+        "card_identity.h declares `const char* identityCheckName(const CardInfo& card);` on one line, but card_identity.cpp defines it as `const char* identityCheckName(\\n    const CardInfo& card\\n) {`, while the file's other two functions (attemptStageName, resolveVendor) keep the compact one-line form both there and in the header.",
+        "display_ui_internal.h declares `void header(const char* title);` on one line, but display_ui_internal.cpp defines it as `void header(\\n    const char* title\\n) {`, even though the single short parameter fits trivially on one line."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "error_consistency",
+      "identifier": "benchmark_result_no_error_capture",
+      "summary": "BenchmarkResult captures no SD error code on failure, unlike CardInfo/AttemptResult/SpiScalePoint",
+      "confidence": "high",
+      "suggestion": "Add uint8_t ioErrorCode/ioErrorData to BenchmarkResult, and have runChunkedIo() call recordSdError() (or read sd's error state directly) when transferred != chunk, populating those fields \u2014 mirroring the fix already applied to sd.volumeBegin() failures in sd_card.cpp.",
+      "related_files": [
+        "src/core/app_types.h",
+        "src/benchmark/benchmark.cpp"
+      ],
+      "evidence": [
+        "app_types.h: BenchmarkResult has only bool *Ok fields; CardInfo has volumeErrorCode/volumeErrorData and AttemptResult/SpiScalePoint both have errorCode/errorData populated via recordSdError().",
+        "benchmark.cpp's runChunkedIo() (backing timedFileWrite/timedFileRead/verifyFile) returns false on a short transfer without ever calling recordSdError() or logging the SD error state."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor"
+    },
+    {
+      "dimension": "error_consistency",
+      "identifier": "silent_file_open_failure",
+      "summary": "sd.open() failure in runQuickBenchmark() produces no Serial output at all, unlike every other SD failure branch",
+      "confidence": "medium",
+      "suggestion": "Add an else branch after `if (file)` that logs the open failure via recordSdError() (reusing sd.sdErrorCode()/sd.sdErrorData()), consistent with every other SD failure branch in the codebase.",
+      "related_files": [
+        "src/benchmark/benchmark.cpp"
+      ],
+      "evidence": [
+        "runQuickBenchmark() wraps the entire write/read/verify sequence in `if (file) { ... }` with no else branch; when sd.open(TEST_FILE, O_RDWR|O_CREAT|O_TRUNC) fails, the function falls through to the raw-read stage with fileWriteOk/fileReadOk/verifyOk/cleanupOk left at defaults and zero log output.",
+        "Every other card-level failure (scanCard()'s INIT/CID/CSD/READ, sd.volumeBegin(), spi_scale_benchmark's INIT/READ/BENCH, benchmark_raw.cpp's raw read) prints a diagnostic line on failure; this is the only I/O failure branch with none."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "error_consistency",
+      "identifier": "raw_read_bypasses_recordsderror",
+      "summary": "rawReadAtCurrentSpeed() hand-rolls its own SD error log format instead of using the shared recordSdError() helper",
+      "confidence": "low",
+      "suggestion": "If the LBA needs to appear in the message, pass a formatted label (e.g. a small local buffer with 'READ LBA %lu') into recordSdError() rather than maintaining a second printf call, so all SD failure log lines share one format.",
+      "related_files": [
+        "src/benchmark/benchmark_raw.cpp",
+        "src/hardware/sd_card.cpp"
+      ],
+      "evidence": [
+        "recordSdError() standardizes 'LABEL FAIL XX/XX' for scanCard() and runSpiScalingBenchmark(), but rawReadAtCurrentSpeed() prints 'Raw read failed at LBA %lu: %02X/%02X' via its own inline Serial.printf on the same sd.sdErrorCode()/sd.sdErrorData() pair, producing a second message format for the same failure kind."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "naming_quality",
+      "identifier": "touch_sx_sy_abbreviation",
+      "summary": "readTouch()'s sx/sy output params abbreviate screen coords inconsistently with screenX/screenY used for the same concept elsewhere",
+      "confidence": "medium",
+      "suggestion": "Rename readTouch()'s `sx`/`sy` parameters to `screenX`/`screenY` in both touch.h and touch.cpp (and update the two call sites in main.cpp's parameter names only if desired - the call sites already use local `x`/`y`, which is fine) so the same concept is spelled the same way everywhere it appears.",
+      "related_files": [
+        "src/hardware/touch.h",
+        "src/hardware/touch.cpp"
+      ],
+      "evidence": [
+        "touch.h: `bool readTouch(int& sx, int& sy);`",
+        "touch.cpp's readTouch() computes fully-spelled `rawX`/`rawY` locals, then passes them to `mapTouchToScreen(rawX, rawY, sx, sy)` - mixing descriptive and abbreviated names for coordinate values within the same function.",
+        "touch_calibration.h's mapTouchToScreen() uses `int& screenX, int& screenY` for the identical output concept, and ui_geometry.h uses `pointX`/`pointY`/`rectX`/`rectY` for coordinates elsewhere - sx/sy is the only abbreviated pair in the codebase's coordinate-naming vocabulary."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "test_strategy",
+      "identifier": "untested_pure_logic_in_display_results",
+      "summary": "Pure SPI-scale-graph math in display_results.cpp has zero test coverage despite having no hardware dependency",
+      "confidence": "high",
+      "suggestion": "Move scaleGraphMaxSpeed(), scalePointCoords(), and buildScaleSummary() into ui_geometry.h/.cpp (they take only primitives/SpiScaleResult, which is already hardware-free), add ui_geometry.cpp's existing env:native filter entry (no platformio.ini change needed since it's already included), and add Unity tests mirroring test_ui_geometry.cpp's style: count==1, no successful point (summary stays empty), and a failed point sitting at the graph floor.",
+      "related_files": [
+        "src/ui/display_results.cpp",
+        "src/ui/ui_geometry.h",
+        "platformio.ini"
+      ],
+      "evidence": [
+        "scaleGraphMaxSpeed(), scalePointCoords(), and buildScaleSummary() in src/ui/display_results.cpp perform only float/int arithmetic and snprintf formatting -- none call tft() or any TFT_eSPI API -- yet the file is not in platformio.ini's env:native build_src_filter, so these functions only ever run on real hardware.",
+        "The same category of logic (hitTestRect, computeBarFillWidth) already lives in src/ui/ui_geometry.cpp specifically so it can be host-tested (test/test_ui_geometry/test_ui_geometry.cpp), so this is an inconsistent application of the codebase's own established pattern rather than a novel gap.",
+        "scalePointCoords() has non-trivial edge-case behavior worth locking down (count==1 divide-by-max(1,count-1), point.ok==false vs maxSpeed<=0.0f branches) that is currently unverified by any test."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor"
+    },
+    {
+      "dimension": "package_organization",
+      "identifier": "benchmark_depends_on_ui",
+      "summary": "benchmark/benchmark.cpp includes ui/display_ui.h and calls uiShowProgress() directly, inverting the domain->presentation layering used everywhere else",
+      "confidence": "medium",
+      "suggestion": "Have runQuickBenchmark() (and the shared runChunkedIo() helper) accept a progress-callback function pointer instead of calling uiShowProgress() directly -- reuse the exact ChunkIoFn function-pointer idiom already defined in this same file (benchmark.cpp lines 31-36) for a new `using ProgressFn = void(*)(const char*, const char*, size_t, size_t, float);` parameter threaded through runChunkedIo()/timedFileWrite()/timedFileRead()/verifyFile()/runQuickBenchmark(). main.cpp then passes uiShowProgress directly as the callback when it calls runQuickBenchmark(uiShowProgress). This removes benchmark/'s #include of ui/display_ui.h entirely, restoring a strictly one-directional core<-hardware<-{benchmark,ui} dependency graph, without introducing any new abstraction machinery (it mirrors a pattern the file already uses).",
+      "related_files": [
+        "src/benchmark/benchmark.cpp",
+        "src/benchmark/benchmark.h",
+        "src/ui/display_ui.h",
+        "src/main.cpp"
+      ],
+      "evidence": [
+        "benchmark.cpp line 9: #include \"../ui/display_ui.h\"",
+        "runChunkedIo() (benchmark.cpp lines 84-159) calls uiShowProgress() twice, and runQuickBenchmark() calls it two more times (lines 361, 429), making the domain-logic I/O loop directly responsible for driving the TFT progress screen",
+        "coupling_matrix shows benchmark->ui: 1 as the only edge that does not point toward core/, and no other benchmark/ file (benchmark_raw.cpp, spi_scale_benchmark.cpp) includes any ui/ header",
+        "benchmark_internal.h's own comment states DMA buffer allocation was deliberately kept in hardware/sd_card.h 'since hardware/ can't depend back on benchmark/', showing the team already enforces this direction of layering elsewhere but did not apply the same rule to benchmark->ui"
+      ],
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor"
+    },
+    {
+      "dimension": "contract_coherence",
+      "identifier": "benchmark_h_doc_asymmetry",
+      "summary": "runQuickBenchmark() is undocumented while its sibling runSpiScalingBenchmark() in the same header has an exhaustive side-effect/return contract comment",
+      "confidence": "medium",
+      "suggestion": "Add a short comment above runQuickBenchmark() in benchmark.h stating that a default-constructed (all-false) BenchmarkResult is returned on early failure (card not qualified, or buffer allocation failure), matching the documentation style already used for its sibling in the same header.",
+      "related_files": [
+        "src/benchmark/benchmark.h",
+        "src/benchmark/benchmark.cpp"
+      ],
+      "evidence": [
+        "benchmark.h: runSpiScalingBenchmark() has a 6-line comment explaining its rescan() side effect and what callers may assume about getCardInfo()/getSd() afterward.",
+        "benchmark.h: runQuickBenchmark() has no comment at all, even though benchmark.cpp shows it creates and deletes a test file on the SD card, writes to Serial, and silently returns an all-default BenchmarkResult (every *Ok field false) when card.cardOk is false or the DMA buffer allocation fails."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "contract_coherence",
+      "identifier": "write_only_status_fields",
+      "summary": "BenchmarkResult.cleanupOk and CardInfo.csdOk are written but never read by any caller, and cleanupOk's true-by-default polarity is inconsistent with every sibling *Ok field",
+      "confidence": "medium",
+      "suggestion": "Either surface these fields where the other *Ok fields already surface (e.g. show cleanup status in printBenchmarkResult()'s Serial summary, or fold csdOk into identityCheckName()'s check alongside cidOk), or remove the fields if they don't need to be tracked -- don't leave declared-but-unconsumed status fields in a struct whose sibling fields are all consumed.",
+      "related_files": [
+        "src/core/app_types.h",
+        "src/benchmark/benchmark.cpp",
+        "src/hardware/sd_card.cpp"
+      ],
+      "evidence": [
+        "app_types.h: BenchmarkResult declares preallocOk/fileWriteOk/fileReadOk/verifyOk/rawReadOk defaulting to false but cleanupOk defaulting to true -- the only field with 'succeeded unless proven otherwise' semantics in the struct.",
+        "benchmark.cpp sets result.cleanupOk once (line ~437); no file in src/ui or src/benchmark reads it afterward (printBenchmarkResult() and uiShowBenchmarkResult() both skip it).",
+        "sd_card.cpp's fillCardIdentity() sets info.csdOk = true alongside info.cidOk = true, but only cidOk is later read (by identityCheckName()); csdOk has no reader anywhere in src/."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "logic_clarity",
+      "identifier": "csd_ok_dead_state",
+      "summary": "CardInfo::csdOk is always set alongside cidOk but never read anywhere, making it dead write-only state",
+      "confidence": "medium",
+      "suggestion": "Remove the unused CardInfo::csdOk field (app_types.h) and the corresponding `info.csdOk = true;` assignment in fillCardIdentity() (sd_card.cpp), since cidOk already reflects the same success condition and is the field actually consulted.",
+      "related_files": [
+        "src/hardware/sd_card.cpp",
+        "src/core/app_types.h"
+      ],
+      "evidence": [
+        "fillCardIdentity() in sd_card.cpp sets info.cidOk = true and info.csdOk = true together, and is only reached after scanCard()'s sequential readCID()-then-readCSD() guard chain has already succeeded for both.",
+        "printCardReport() (sd_card.cpp) and identityCheckName() (card_identity.cpp) both branch on info.cidOk / card.cidOk; neither, nor any other production file, ever reads csdOk.",
+        "test_app_types.cpp only checks that csdOk defaults to false -- no test or production code checks it becoming true."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "logic_clarity",
+      "identifier": "unused_raw_test_sectors_constant",
+      "summary": "RAW_TEST_SECTORS constant in config.h is defined but never referenced by any code",
+      "confidence": "low",
+      "suggestion": "Delete the unused RAW_TEST_SECTORS constant from config.h, or if it was meant to be the sector count passed into rawReadAtCurrentSpeed(), use it explicitly at that call site instead of BENCH_TEST_SIZE.",
+      "related_files": [
+        "src/core/config.h"
+      ],
+      "evidence": [
+        "config.h computes `static constexpr uint32_t RAW_TEST_SECTORS = BENCH_TEST_SIZE / SECTOR_SIZE;` but a repository-wide search finds no .cpp/.h file (production or test) referencing RAW_TEST_SECTORS.",
+        "rawReadAtCurrentSpeed() (benchmark_raw.cpp) instead derives wantedSectors from its own bytesToRead parameter divided by SECTOR_SIZE, so the named constant plays no role in the actual computation it appears intended for."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    },
+    {
+      "dimension": "type_safety",
+      "identifier": "void_star_context_callback",
+      "summary": "ChunkIoFn's void* context parameter erases type for the one implementation that actually uses it",
+      "confidence": "low",
+      "suggestion": "Replace the generic `void* context` parameter with a concrete `uint32_t* crcAccum` (nullable) threaded through runChunkedIo() and ChunkIoFn, since that is the only value ever passed; this removes the unchecked cast in chunkReadAndCrc and the two ignored-parameter comments in chunkWrite/chunkRead without adding any abstraction.",
+      "related_files": [
+        "src/benchmark/benchmark.cpp"
+      ],
+      "evidence": [
+        "using ChunkIoFn = int(*)(FsFile&, uint8_t*, size_t, void* context); chunkWrite and chunkRead both declare and ignore `void* /*context*/`, only chunkReadAndCrc uses it, via an unchecked C-style cast: `uint32_t* crc = (uint32_t*)context;`",
+        "runChunkedIo() is only ever called with either nullptr or a single &actualCrc uint32_t*, so the generic void* buys no real polymorphism beyond this one call site"
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    }
+  ],
+  "review_quality": {
+    "batch_count": 20,
+    "dimension_coverage": 0.05,
+    "evidence_density": 6.092,
+    "high_score_missing_issue_note": 0
+  },
+  "context_updates": {
+    "cross_module_architecture": {
+      "add": [
+        {
+          "header": "Layered core/hardware/benchmark/ui dependency direction",
+          "description": "The coupling matrix shows a clean base-up dependency order (core <- hardware <- benchmark, ui) with an explicit in-code rule in benchmark_internal.h stating hardware/ never depends back on benchmark/; every hardware/*.cpp file was verified to only include core/ and third-party headers, confirming the rule is followed, not just stated.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Native test build filter enforces the pure/hardware-dependent boundary",
+          "description": "platformio.ini's [env:native] build_src_filter whitelists exactly the files whose headers claim to be hardware/Arduino-independent (bench_math, card_format, card_identity, touch_calibration, ui_geometry), so the documented architecture boundary is mechanically checked by the build rather than only asserted in comments.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Deliberate singleton state in sd_card.cpp, documented and justified",
+          "description": "sd_card.cpp holds module-static state (sd, info, attempts[], cid, csd) exposed via getters, with a multi-paragraph comment in sd_card.h explaining why this fits the single-hardware-instance embedded device better than threading return values, and explicitly contrasting it with runSpiScalingBenchmark()'s one-shot return -- this is reasoned shared state, not accidental coupling.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "benchmark.cpp reaches into ui/ for live progress rendering",
+          "description": "runChunkedIo() in benchmark.cpp calls uiShowProgress() directly rather than through a callback, creating the one benchmark->ui edge in the coupling matrix; sibling benchmark files (spi_scale_benchmark.cpp, benchmark_raw.cpp) do not do this, so it is an isolated exception rather than a subsystem-wide pattern.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    },
+    "high_level_elegance": {
+      "add": [
+        {
+          "header": "Domain-aligned core/hardware/benchmark/ui split",
+          "description": "Each top-level src/ directory maps to a real domain capability (shared types/config, drivers, benchmarks, rendering) rather than a historical grouping, and dependency direction between them is strictly one-way (core has zero outgoing deps; hardware only depends on core; benchmark and ui depend downward). A new engineer can predict which directory owns a given concern.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "main.cpp is a genuinely thin dispatcher",
+          "description": "setup()/loop() in main.cpp (151 lines total) only wire up modules and dispatch on HomeAction/BenchMenuAction to module-level functions; there is no business logic inlined here, matching the CLAUDE.md claim that it is intentionally thin.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Headers carry rationale comments, not just signatures",
+          "description": "Files like sd_card.h and benchmark.h explain in-line why a boundary decision was made (e.g. why scanCard() returns a bool nobody checks vs. runSpiScalingBenchmark()'s self-contained result, why card_format/card_identity live in hardware/ instead of a shared util/). This meaningfully speeds up onboarding compared to bare declarations.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "benchmark/ directly drives ui/ progress rendering",
+          "description": "benchmark.cpp includes ui/display_ui.h and calls uiShowProgress() itself from inside chunked I/O loops, rather than main.cpp orchestrating progress display. This is an atypical layering direction (domain logic calling into presentation) but is a deliberate, documented choice for a single-threaded embedded event loop rather than accidental drift - noted here as a neutral characteristic, not a defect.",
+          "settled": false,
+          "positive": false
+        }
+      ]
+    },
+    "convention_outlier": {
+      "add": [
+        {
+          "header": "One-arg-per-line signature wrapping is the dominant, near-universal style",
+          "description": "touch.h/.cpp, touch_calibration.h/.cpp, bench_math.h/.cpp, ui_geometry.h/.cpp, benchmark.h/.cpp/benchmark_raw.cpp/spi_scale_benchmark.cpp, and display_ui.h/.cpp/display_diagnostics.cpp/display_progress.cpp/display_results.cpp all wrap every function parameter onto its own line regardless of signature length, and the previous review round explicitly reformatted touch.* to match this as 'the dominant' style -- so it is the codebase's settled convention.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "sd_card/card_format/card_identity retain pre-reform compact signature style",
+          "description": "Unlike the rest of src/, sd_card.h/.cpp, card_format.h, and card_identity.h keep single-line function signatures for short parameter lists, and this predates (and was untouched by) the prior review's touch.h/touch.cpp reformatting -- a residual style island rather than a newly introduced one.",
+          "settled": true,
+          "positive": false
+        },
+        {
+          "header": "Naming case, include guards, and internal-linkage idiom are uniform",
+          "description": "All 13 headers use #pragma once, all types are PascalCase (CardInfo, BenchmarkResult, AttemptStage), all functions/locals are camelCase, all constants are SCREAMING_SNAKE, and every internal-linkage helper uses `static` (no anonymous namespaces remain anywhere in src/) -- these conventions have no exceptions across the 29-file tree.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Structs used uniformly for both domain and local screen-state data",
+          "description": "Domain types (CardInfo, BenchmarkResult, AttemptResult, SpiScaleResult) and file-local drawing helpers (Button in display_ui.cpp, ScaleGraph/ScalePointXY in display_results.cpp) are all plain structs; there is no class-based alternative anywhere in src/, so there is no mixed type-strategy split to report.",
+          "settled": true,
+          "positive": true
+        }
+      ]
+    },
+    "error_consistency": {
+      "add": [
+        {
+          "header": "Shared recordSdError() helper standardizes SD failure logging",
+          "description": "scanCard() and runSpiScalingBenchmark() both call recordSdError() at every failure stage, capturing sd.sdErrorCode()/sd.sdErrorData() into the caller's error-code fields and printing a uniform 'LABEL FAIL XX/XX' line, giving predictable, traceable failure diagnostics for the card-qualification family of operations.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "No exceptions anywhere; uniform bool+out-param failure signaling",
+          "description": "The whole src/ tree uses bool return values plus out-parameters for failure propagation with zero try/catch/throw usage, consistent with an embedded, exceptions-off C++ target and avoiding the mixed-strategy problem this dimension watches for.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "BenchmarkResult lacks the error-code fields CardInfo/AttemptResult/SpiScalePoint",
+          "description": "The quick file benchmark (runQuickBenchmark/runChunkedIo in benchmark.cpp) is the one I/O path in the codebase whose result struct and failure branches never capture an SD error code, and one branch (failed sd.open()) logs nothing at all \u2014 a gap left over from a prior fix that added error-code capture to CardInfo.volumeErrorCode but not to BenchmarkResult.",
+          "settled": false,
+          "positive": false
+        }
+      ]
+    },
+    "naming_quality": {
+      "add": [
+        {
+          "header": "Ok-suffix convention for all boolean status fields",
+          "description": "CardInfo, BenchmarkResult, and SpiScalePoint all name their boolean status flags with an Ok suffix (cardOk, volumeOk, cidOk, csdOk, preallocOk, fileWriteOk, fileReadOk, verifyOk, rawReadOk, cleanupOk, point.ok). This is applied with zero exceptions across every struct in app_types.h, so a reader can trust the pattern on sight without checking definitions.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "ui-prefix separates pure screen functions from main.cpp orchestrators",
+          "description": "Every function that only draws or reads touch input is named uiSomething() (uiDrawHome, uiShowDiagnostics, uiHitTestHome, uiWaitForTap, etc.) and lives in ui/. main.cpp's private helpers that sequence a user-visible flow (rescan, showDiagnostics, runBenchMenu) deliberately omit the prefix. This resolves the prior showDiagnosticsScreen()/uiShowDiagnostics() naming-collision concern: the current showDiagnostics()/uiShowDiagnostics() pair now instantiates a consistent, learnable convention rather t",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Doc comments disambiguate near-synonym function pairs",
+          "description": "Where two functions could otherwise be confused for one another (scanCard() vs runSpiScalingBenchmark(), which both re-qualify SD hardware but return differently-shaped results), the header declaration carries a multi-line comment explaining the distinction. This preempts the kind of name-based confusion the dimension looks for, at the point of declaration rather than requiring the reader to diff implementations.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Pure getters (getSd/getCardInfo/getAttempts/getAttemptCount) never mutate",
+          "description": "Every get-prefixed function in sd_card.h returns a reference or pointer to existing module state without side effects, so the get prefix reliably signals 'read-only' throughout the codebase.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "sx/sy abbreviation is an isolated outlier in touch.h",
+          "description": "readTouch()'s sx/sy parameters are the only abbreviated coordinate names in the codebase; every other coordinate-producing function (mapTouchToScreen, hitTestRect, computeBarFillWidth call sites) spells out screenX/screenY, rawX/rawY, pointX/pointY, rectX/rectY. Tracked as issue touch_sx_sy_abbreviation.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    },
+    "abstraction_fitness": {
+      "add": [
+        {
+          "header": "Pure-logic helpers isolated from hardware for testability",
+          "description": "card_format, card_identity, bench_math, ui_geometry, and touch_calibration are each kept as narrow, single-purpose header/cpp pairs with explicit 'no hardware/Arduino dependency, safe to unit-test on host' documentation, avoiding a generic-utils dumping ground while still being genuinely reused across hardware/, benchmark/, and ui/.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Shared helpers earn their abstraction via real multi-site reuse",
+          "description": "recordSdError(), allocateDmaBuffer(), and runChunkedIo() each replace concrete duplicated logic that existed before the prior review round's fixes (2-5 real call sites each), rather than being introduced speculatively.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Internal headers keep public module APIs minimal",
+          "description": "display_ui_internal.h and benchmark_internal.h hold only what's shared across a module's own .cpp files and are explicitly marked 'not part of the public API', so display_ui.h and benchmark.h stay small and consistent instead of exposing implementation details.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Header comments document contract asymmetry to prevent leaky assumptions",
+          "description": "sd_card.h explains, in the doc comment on scanCard(), why it returns a bool over persistent global state instead of a self-contained result like runSpiScalingBenchmark()'s SpiScaleResult, so callers can't mistakenly treat the two APIs as interchangeable.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "No classes, interfaces, or facades in this procedural codebase",
+          "description": "The project is built entirely from free functions and static file-scope state (a deliberate embedded-C++ module pattern), so delegation-heavy-class, one-implementation-interface, and facade/re-export anti-patterns have no surface to occur on.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    },
+    "dependency_health": {
+      "add": [
+        {
+          "header": "Two-library dependency set, each with a single clear purpose",
+          "description": "platformio.ini's [env:cyd] declares only TFT_eSPI (display) and SdFat (SD/filesystem) -- no overlapping or redundant libraries exist, and Arduino's built-in SD.h/FS.h are never used alongside SdFat, so there is no split-purpose duplication to reconcile.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "No dependency manifest drift or stale lock artifacts",
+          "description": "platformio.ini is the only dependency manifest in the repo (no package.json/library.json at root); the fetched-library cache under .pio/ is gitignored, so there is nothing checked in that could go stale relative to the manifest.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Platform toolchain version left unpinned",
+          "description": "[env:cyd]'s `platform = espressif32` has no version suffix, unlike the two lib_deps entries which were pinned in a prior fix round; this is the one remaining place a fresh build could silently pick up a different toolchain.",
+          "settled": false,
+          "positive": false
+        }
+      ],
+      "settle": [
+        "TFT_eSPI and SdFat version pinning"
+      ]
+    },
+    "low_level_elegance": {
+      "add": [
+        {
+          "header": "Shared runChunkedIo() eliminated write/read/verify triplication",
+          "description": "benchmark.cpp's timedFileWrite/timedFileRead/verifyFile now all call one runChunkedIo() helper parameterized by a ChunkIoFn callback (chunkWrite/chunkRead/chunkReadAndCrc) and a void* context; only progress-label and rate-display differ per call site, confirming the historical low_level_elegance fix has held.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "uiShowSpiScaleResult decomposed into named single-purpose helpers",
+          "description": "display_results.cpp splits the former ~185-line function into scaleGraphMaxSpeed/drawScaleGraphFrame/scalePointCoords/drawScalePoint/buildScaleSummary, each documented and independently readable; the orchestrator is now a short loop over these helpers, confirming the historical fix has held.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Guard clauses appear only at genuine boundaries",
+          "description": "Null/failure checks are limited to real boundary conditions (DMA allocation failure, sd.card() absence, zero sector count, card.cardOk) rather than being sprinkled defensively on values that can't be null, keeping edge-case handling precise without sprawl.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "scanCard()'s four-stage qualification loop repeats a fail/record/continue shape ",
+          "description": "Each of cardBegin/readCID/readCSD/readSector follows the same 3-line failure pattern; this mirrors the actual sequential hardware protocol rather than being copy-paste drift, so further extraction would obscure the stage ordering rather than clarify it.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    },
+    "mid_level_elegance": {
+      "add": [
+        {
+          "header": "Single shared app_types.h for all cross-module data shapes",
+          "description": "CardInfo, AttemptResult, BenchmarkResult, and SpiScaleResult/SpiScalePoint are defined once in src/core/app_types.h and passed by const-reference across hardware/, benchmark/, and ui/ with no per-module duplicate or adapter structs \u2014 the one obvious place boundary data is shaped.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Pure translation helpers isolated from hardware, each unit-tested",
+          "description": "card_format, card_identity, ui_geometry, bench_math, and touch_calibration each hold one module's boundary-crossing translation logic (byte/clock formatting, vendor/stage lookups, hit-testing, coordinate mapping) in files explicitly marked hardware-independent and mirrored by a test/test_<name> host test \u2014 translation happens in one obvious, verifiable place rather than being inlined at call sites.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Uniform draw()/hitTest() pairing convention across UI screens",
+          "description": "Every interactive screen (Home, BenchMenu) exposes a uiDraw*()/uiHitTest*(x,y) pair returning a plain enum action, letting main.cpp's orchestration loops treat every screen identically \u2014 a predictable, unsurprising handoff shape reused rather than reinvented per screen.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Boundary side effects documented at the declaration, not just in commit history",
+          "description": "scanCard()'s getter-vs-return-value design and runSpiScalingBenchmark()'s hidden rescan are both explained directly in sd_card.h/benchmark.h doc comments (why persistent state fits one use case and a one-shot result fits the other), so the previously-flagged undocumented side effects are now durably visible to any future reader, not just fixed once.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "benchmark/ calls directly into ui/ for live progress display",
+          "description": "runChunkedIo()/runQuickBenchmark() in benchmark.cpp call uiShowProgress() directly rather than the orchestrator (main.cpp) mediating progress updates, the only benchmark->ui edge in the import graph. This is a pragmatic choice for a single-threaded embedded loop (no callback/async machinery needed) but is a real exception to the otherwise consistent main-as-composer pattern.",
+          "settled": false,
+          "positive": false
+        }
+      ]
+    },
+    "test_strategy": {
+      "add": [
+        {
+          "header": "Full test coverage of the project's own pure-logic surface",
+          "description": "Every module CLAUDE.md and platformio.ini classify as hardware-independent (bench_math, card_format, card_identity, touch_calibration, ui_geometry, app_types) has a matching Unity suite in test/, and .github/workflows/native-tests.yml runs pio test -e native on every push/PR, making this an enforced rather than aspirational safety net.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Tests assert real edge cases, not happy-path smoke checks",
+          "description": "Test suites verify boundary conditions (exact 1 GiB threshold, half-open hit-test rectangles, out-of-range touch clamping, chunk-split CRC32 equivalence, count==0 zero-max division), giving genuine regression protection rather than just confirming functions run.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Honest documentation of the untested hardware-coupled surface",
+          "description": "CLAUDE.md explicitly names which files have no automated coverage (main.cpp, hardware/ SPI/touch code, benchmark/ SdFat I/O, ui/ TFT_eSPI rendering) and states why (no mock Arduino/SdFat/TFT_eSPI layer exists), so the coverage gap is a known, calibrated tradeoff rather than a hidden one.",
+          "settled": true,
+          "positive": false
+        },
+        {
+          "header": "display_results.cpp pure-math helpers untested, breaking established extraction ",
+          "description": "scaleGraphMaxSpeed()/scalePointCoords()/buildScaleSummary() are pure logic added during a prior refactor but left in the TFT-coupled file instead of ui_geometry.cpp, the codebase's own established home for such host-testable math -- see issue untested_pure_logic_in_display_results.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    },
+    "api_surface_coherence": {
+      "add": [
+        {
+          "header": "Uniform bool+out-ref shape for fallible reads",
+          "description": "readTouch() and rawReadAtCurrentSpeed() both signal success via a bool return with the result written to a trailing reference parameter, so a developer who has seen one fallible hardware-read function can predict the shape of the other without checking its implementation.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Uniform (inputs, char* out, size_t outSize) shape for string producers",
+          "description": "formatHumanBytes(), formatSpiClock(), and buildScaleSummary() are the only string-producing functions in the codebase and all three use the identical bounded-buffer output pattern -- consistent with embedded/no-heap constraints and predictable across call sites.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "No overloads, no >5-param public functions",
+          "description": "Across all 13 public headers, no function name is overloaded and the widest public signature (scalePointCoords, 5 params) stays at the documented threshold -- there is no evidence of argument-type-based interface overloading anywhere in the public surface.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "scanCard()/runSpiScalingBenchmark() shape divergence remains, now fully document",
+          "description": "The previously-flagged shape mismatch between scanCard()'s persistent-getter model and runSpiScalingBenchmark()'s self-contained SpiScaleResult was resolved by adding an explicit rationale comment on scanCard()'s declaration in sd_card.h rather than unifying the shapes; this is a legitimate and sufficient resolution since the two functions serve genuinely different access patterns (queryable history vs. one-shot display), but scanCard()'s bool return staying unused at every call site is a small ",
+          "settled": false,
+          "positive": false
+        }
+      ]
+    },
+    "authorization_consistency": {
+      "add": [
+        {
+          "header": "No authorization surface exists in this firmware",
+          "description": "CYD SD Tester is single-user embedded firmware for a physical microSD diagnostic device: it has no network stack, no server, no user accounts/sessions, and no data store, so there are no routes, permission literals, or trust boundaries for auth consistency to apply to. This is a structural fact about the project, not a gap.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    },
+    "ai_generated_debt": {
+      "add": [
+        {
+          "header": "Header comments explain WHY, not WHAT",
+          "description": "The headers with the highest mechanical comment_ratio (sd_card.h, benchmark.h, card_identity.h, touch_calibration.h, ui_geometry.h) use their comments to document non-obvious cross-file design decisions -- e.g. sd_card.h contrasts scanCard()'s persistent-state getter pattern against runSpiScalingBenchmark()'s one-shot return value, and touch_calibration.h documents the physical X/Y axis swap from panel mounting. None of it restates adjacent code, so the high comment density is a documentation st",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Diagnostic Serial output is purposeful, not nosy logging",
+          "description": "Serial.printf calls in sd_card.cpp, benchmark.cpp, and spi_scale_benchmark.cpp print card/benchmark reports that are the tool's actual user-facing output (this is an SD diagnostic utility whose only UI besides the TFT is Serial). There is no per-function entry/exit logging or full-struct dumping; the previously-flagged unconditional touch-coordinate debug prints in touch.cpp remain removed.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "recordSdError() still centralizes error-capture boilerplate",
+          "description": "sd_card.cpp's scanCard() and spi_scale_benchmark.cpp both call the shared recordSdError(sd, errorCode, errorData, label) helper instead of duplicating the sdErrorCode()/sdErrorData()/printf pattern inline -- confirms the prior review-round fix for this dimension has held.",
+          "settled": true,
+          "positive": true
+        }
+      ]
+    },
+    "incomplete_migration": {
+      "add": [
+        {
+          "header": "No migration debt markers anywhere in src/",
+          "description": "A repo-wide search for TODO/FIXME/DEPRECATED/legacy/migrate/shim across src/ and test/ returns zero hits; the only such markers in the whole working tree live in third-party .pio/libdeps sources, not project code.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Prior README-documented migrations are fully executed",
+          "description": "README.md's version history describes the BENCH/SCALE menu merge, the filesystemBytes->filesystemDataBytes rename, and removal of dead experimental raw-benchmark toggles; grepping for each old name/symbol confirms none remain in src/, so these are completed migrations, not ongoing ones with residue.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Dual SPI speed tables are a documented permanent split, not stale duplication",
+          "description": "core/config.h's SPI_SPEEDS (normal qualification, 20/10/4/1MHz) and SPI_SCALE_SPEEDS (diagnostic scaling benchmark, 40/20/10/4/1MHz) look like they could be an incomplete consolidation, but README.md's v0.7.1 notes and adjacent code comments explain the 40MHz split is intentional and permanent (normal scans stopped trusting 40MHz; the scaling benchmark keeps probing it as a diagnostic data point).",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    },
+    "package_organization": {
+      "add": [
+        {
+          "header": "util/ dumping ground fully eliminated",
+          "description": "The previously-flagged util/ directory (card_format, card_identity, touch_calibration living outside their sole-consumer domain while bench_math/ui_geometry stayed in-domain) no longer exists; all three were folded into hardware/, its only consumer, making the pure/testable-helper placement rule consistent across benchmark/, hardware/, and ui/.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "core/ is a genuine acyclic shared kernel",
+          "description": "core/app_types.h and core/config.h have zero outgoing includes beyond each other and the standard library, and are the only two files with avg_fan_in >= 5 imported from every other domain (hardware, benchmark, ui) -- exactly the root-level-core exception the package_organization rubric calls out to skip.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Consistent private internal-header pattern",
+          "description": "benchmark/benchmark_internal.h and ui/display_ui_internal.h both serve the same role -- sharing helpers across sibling .cpp files in one folder without exposing them on the public header -- applied identically in both domains rather than one folder inventing its own convention.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "benchmark/ depends on ui/ for progress reporting",
+          "description": "benchmark.cpp includes ui/display_ui.h and calls uiShowProgress() directly from its I/O loop, the only coupling_matrix edge that does not point toward core/; this contradicts the one-directional layering the codebase documents for itself in benchmark_internal.h (hardware/ deliberately cannot depend on benchmark/). See issue benchmark_depends_on_ui.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    },
+    "initialization_coupling": {
+      "add": [
+        {
+          "header": "Linear, single-site boot sequence in main.cpp",
+          "description": "setup() calls initDisplay(), initTouch(), initSdHardware(), then rescan() in a flat, unconditional sequence with no branching or lazy/conditional init paths, so the entire hardware bring-up order is visible in one ~10-line function.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "TFT singleton uses lazy function-local static",
+          "description": "tft() in display_ui_internal.cpp wraps a function-local static TFT_eSPI instance instead of a file-scope global, so the object is constructed on first use rather than at ambiguous cross-TU static-init time \u2014 this sidesteps static-initialization-order-fiasco risk even though the codebase has only one entry point.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "SD hardware globals gated by state flags, not call order",
+          "description": "sd_card.cpp exposes its SdFs/CardInfo/AttemptResult statics only through getSd()/getCardInfo()/getAttempts(), and every consumer (runQuickBenchmark, rawReadAtCurrentSpeed, removeTestFile) checks cardOk/volumeOk/sd.card() before use rather than assuming initSdHardware()/scanCard() already ran \u2014 misordering degrades gracefully (early return) instead of crashing.",
+          "settled": true
+        },
+        {
+          "header": "Eager vs. lazy singleton construction style differs across modules",
+          "description": "sd_card.cpp's hardware globals (sd, info, attempts, cid, csd) are plain file-scope statics built at C++ static-init time, while display_ui_internal.cpp's TFT_eSPI instance is built lazily inside its accessor function \u2014 both are safe given the single-entry-point boot sequence, but the pattern choice isn't consistent across the two singleton call sites.",
+          "settled": false
+        }
+      ]
+    },
+    "design_coherence": {
+      "add": [
+        {
+          "header": "Shared chunked-I/O helper in benchmark.cpp",
+          "description": "runChunkedIo() takes a ChunkIoFn function pointer plus void* context and drives the shared read/write/progress loop; timedFileWrite/timedFileRead/verifyFile each just supply the chunk operation and stage labels instead of duplicating the loop, replacing what a prior review flagged as triplicated code.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "scanCard() decomposed into single-purpose steps",
+          "description": "fillCardIdentity(), runConsistencyChecks(), and printCardReport() are extracted out of scanCard() (src/hardware/sd_card.cpp), so the orchestrator reads as a sequence of named steps rather than one monolithic function mixing qualification, identity parsing, consistency checks, and reporting.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Explicit callback threading avoids an upward dependency",
+          "description": "BenchmarkProgressFn (benchmark_internal.h) is passed explicitly into runQuickBenchmark() from main.cpp rather than benchmark/ #including ui/display_ui.h directly; the header comment documents this is deliberate so benchmark/ does not depend upward on ui/. This is a design decision that trades one extra parameter for a cleaner dependency direction.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "scanCard/runSpiScalingBenchmark scaffold duplication remains, accepted",
+          "description": "The two speed-iterating routines still share a near-identical reset+cardBegin+per-speed-error-logging scaffold. This was already reviewed and marked wontfix on the grounds that with only two call sites the duplication is tolerable; still present in the current code, not a new or newly-reportable defect.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    },
+    "contract_coherence": {
+      "add": [
+        {
+          "header": "Side-effect contracts documented at declaration site",
+          "description": "scanCard() and runSpiScalingBenchmark() both carry multi-line comments at their header declarations explaining hidden global-state mutation and exactly what a caller may assume about getCardInfo()/getSd() afterward -- this is the strongest positive pattern in the dimension and appears to be a direct result of a prior review round.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "getX() naming matches purity everywhere",
+          "description": "Every getX()-named function found (getCardInfo, getSd, getAttempts, getAttemptCount) is a pure read of static module state with no side effects; no getter-that-mutates pattern exists in this codebase.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "benchmark.h documents one sibling function, not the other",
+          "description": "runSpiScalingBenchmark() has an exhaustive side-effect comment while runQuickBenchmark(), in the same header, has none despite comparable failure-path and I/O side-effect complexity -- an isolated documentation-coverage gap rather than a systemic pattern.",
+          "settled": true,
+          "positive": false
+        },
+        {
+          "header": "Write-only status fields in CardInfo/BenchmarkResult",
+          "description": "cleanupOk (BenchmarkResult) and csdOk (CardInfo) are set but never read by any consumer, and cleanupOk's default-true polarity breaks the false-by-default convention every sibling *Ok field follows -- a minor struct-contract inconsistency isolated to two fields.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    },
+    "logic_clarity": {
+      "add": [
+        {
+          "header": "Consistent guard-clause control flow",
+          "description": "Failure handling across scanCard(), runQuickBenchmark(), rawReadAtCurrentSpeed(), removeTestFile(), and runSpiScalingBenchmark() uniformly uses early-return guard clauses rather than nested conditionals, so a developer can trust that once a failure check fires, nothing further in that function runs.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Shared chunked-I/O loop removes triplicated control flow",
+          "description": "runChunkedIo() in benchmark.cpp is the single control-flow path driving the write, read, and CRC-verify passes via a ChunkIoFn function pointer, so the three benchmark stages cannot silently diverge in looping/progress/error-handling behavior the way three hand-copied loops could.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "CardInfo::csdOk is dead write-only state",
+          "description": "csdOk is always set true in lockstep with cidOk inside fillCardIdentity() but is never read by any production code path (only cidOk gates behavior in printCardReport()/identityCheckName()); it exists as a vestigial twin of cidOk from what looks like partial CSD-support wiring.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    },
+    "type_safety": {
+      "add": [
+        {
+          "header": "Enum classes are never bypassed with raw literals",
+          "description": "AttemptStage, HomeAction, and BenchMenuAction are all enum class types and every comparison/switch site in card_identity.cpp, display_diagnostics.cpp, display_ui.cpp, and main.cpp uses the typed enumerator, never an underlying int \u2014 confirmed by exhaustive grep across src/ with no bare-int comparisons against these fields.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "SdFat macro constants intentionally kept as uint8_t, not wrapped",
+          "description": "CardInfo.cardType and .fsType stay uint8_t because SdFat's SD_CARD_TYPE_*/FAT_TYPE_* are plain library-defined macros, not a C++ enum the project owns; sd_card.h documents this rationale inline and cardTypeName()/fsName() both switch on the macro values with a default case, so the classification is centralized despite the loose storage type.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Explicit casts before printf integer format specifiers",
+          "description": "Every uint32_t/uint64_t value passed to a %lu/%08lX-style specifier is explicitly cast to (unsigned long) at the call site (sd_card.cpp, benchmark.cpp, benchmark_raw.cpp, display_results.cpp) instead of relying on an implicit conversion, which keeps the printf calls portable and warning-free.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Cast convention fully unified to C-style casts",
+          "description": "A prior review round found one stray static_cast in card_format.cpp against an otherwise all-C-style-cast codebase; a full grep of src/ for static_cast|reinterpret_cast|dynamic_cast now returns zero matches, confirming the cleanup held and the convention is uniform.",
+          "settled": true,
+          "positive": true
+        }
+      ]
+    }
+  },
+  "review_scope": {
+    "reviewed_files_count": 0,
+    "successful_batch_count": 20,
+    "full_sweep_included": false,
+    "total_files": 29,
+    "imported_dimensions": [
+      "abstraction_fitness",
+      "ai_generated_debt",
+      "api_surface_coherence",
+      "authorization_consistency",
+      "contract_coherence",
+      "convention_outlier",
+      "cross_module_architecture",
+      "dependency_health",
+      "design_coherence",
+      "error_consistency",
+      "high_level_elegance",
+      "incomplete_migration",
+      "initialization_coupling",
+      "logic_clarity",
+      "low_level_elegance",
+      "mid_level_elegance",
+      "naming_quality",
+      "package_organization",
+      "test_strategy",
+      "type_safety"
+    ]
+  },
+  "provenance": {
+    "kind": "blind_review_batch_import",
+    "blind": true,
+    "runner": "dry-run",
+    "run_stamp": "20260922_150921",
+    "created_at": "2026-09-22T15:35:35+00:00",
+    "batch_count": 20,
+    "batch_indexes": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+    ],
+    "packet_path": "D:\\dev\\CYD_SD_Tester\\.desloppify\\review_packet_blind.json",
+    "packet_sha256": "faaea6e6ed87a961662dc7ab1b06cadba1f53d24141b7924b5cf57bf1c20e908"
+  },
+  "assessment_coverage": {
+    "scored_dimensions": [
+      "naming_quality",
+      "logic_clarity",
+      "type_safety",
+      "contract_coherence",
+      "error_consistency",
+      "abstraction_fitness",
+      "ai_generated_debt",
+      "high_level_elegance",
+      "mid_level_elegance",
+      "low_level_elegance",
+      "cross_module_architecture",
+      "initialization_coupling",
+      "convention_outlier",
+      "dependency_health",
+      "test_strategy",
+      "api_surface_coherence",
+      "authorization_consistency",
+      "incomplete_migration",
+      "package_organization",
+      "design_coherence"
+    ],
+    "selected_dimensions": [
+      "naming_quality",
+      "logic_clarity",
+      "type_safety",
+      "contract_coherence",
+      "error_consistency",
+      "abstraction_fitness",
+      "ai_generated_debt",
+      "high_level_elegance",
+      "mid_level_elegance",
+      "low_level_elegance",
+      "cross_module_architecture",
+      "initialization_coupling",
+      "convention_outlier",
+      "dependency_health",
+      "test_strategy",
+      "api_surface_coherence",
+      "authorization_consistency",
+      "incomplete_migration",
+      "package_organization",
+      "design_coherence"
+    ],
+    "imported_dimensions": [
+      "abstraction_fitness",
+      "ai_generated_debt",
+      "api_surface_coherence",
+      "authorization_consistency",
+      "contract_coherence",
+      "convention_outlier",
+      "cross_module_architecture",
+      "dependency_health",
+      "design_coherence",
+      "error_consistency",
+      "high_level_elegance",
+      "incomplete_migration",
+      "initialization_coupling",
+      "logic_clarity",
+      "low_level_elegance",
+      "mid_level_elegance",
+      "naming_quality",
+      "package_organization",
+      "test_strategy",
+      "type_safety"
+    ],
+    "missing_dimensions": []
+  }
+}

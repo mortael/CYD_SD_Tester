@@ -1,0 +1,111 @@
+{
+  "batch": "error_consistency",
+  "batch_index": 4,
+  "assessments": {
+    "error_consistency": 84.0
+  },
+  "dimension_notes": {
+    "error_consistency": {
+      "evidence": [
+        "recordSdError(sd, errorCode, errorData, label) in src/hardware/sd_card.h/.cpp is the single shared SD-error capture idiom, called consistently from sd_card.cpp, benchmark.cpp, benchmark_raw.cpp, and spi_scale_benchmark.cpp instead of ad hoc printf calls.",
+        "All fallible operations (scanCard, readTouch, rawReadAtCurrentSpeed, runChunkedIo, timedFileWrite/Read, verifyFile, removeTestFile) use bool return + out-params, never exceptions, which is uniform across the whole codebase.",
+        "benchmark.cpp's runQuickBenchmark() threads result.ioErrorCode/ioErrorData through the open/write/read/verify failure paths (lines 443-487) but not through the raw-read failure path (line 499-504), even though rawReadAtCurrentSpeed() itself calls recordSdError() internally and discards the result.",
+        "spi_scale_benchmark.cpp shows the fix already exists elsewhere in the codebase: it re-calls recordSdError() after a rawReadAtCurrentSpeed() failure to capture point.errorCode/point.errorData (lines 94-105).",
+        "CardInfo.volumeErrorCode/volumeErrorData (sd_card.cpp:432-437) and SpiScalePoint.errorCode/errorData (spi_scale_benchmark.cpp) are populated on failure but never read back anywhere in src/ — unlike the structurally identical AttemptResult.errorCode/errorData, which display_diagnostics.cpp reads to render '<STAGE> XX/XX' on screen."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "confidence": "high"
+    }
+  },
+  "dimension_judgment": {
+    "error_consistency": {
+      "dimension_character": "Error handling is unusually disciplined for this codebase's size: every SD-facing failure funnels through one shared recordSdError() helper, and every fallible function signals failure via bool return plus out-params rather than exceptions, so a developer can trust the general shape of failure propagation across modules. The remaining friction is narrow and structural rather than random noise: the newest error-code field on BenchmarkResult doesn't yet cover the raw-read failure path the way it covers the file I/O paths in the same function, and a couple of struct fields (CardInfo.volumeErrorCode, SpiScalePoint.errorCode) exist to mirror that pattern but are never actually consumed.",
+      "score_rationale": "This sits solidly above the 80-anchor ('mixed strategies... hard to predict'): the prior round of fixes closed the most visible gaps (BenchmarkResult.ioErrorCode wiring for open/write/read/verify, the sd.open() failure Serial output, the rawReadAtCurrentSpeed() printf-vs-helper split), leaving one dominant, consistent idiom throughout. It stays below the 90-anchor because two concrete, easily-verified asymmetries remain live: raw-read failures inside runQuickBenchmark() silently drop their error code where sibling failures in the same function keep theirs, and two struct fields exist solely to be written, never read — exactly the half-finished mirroring a developer would trip over while debugging a raw-read failure report that says 'FAILED' with no code."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "error_consistency",
+      "identifier": "raw_read_failure_no_error_code",
+      "summary": "runQuickBenchmark() captures no SD error code when the raw sector read fails, unlike its open/write/read/verify failure paths",
+      "related_files": [
+        "src/benchmark/benchmark.cpp",
+        "src/benchmark/benchmark_raw.cpp",
+        "src/benchmark/spi_scale_benchmark.cpp"
+      ],
+      "evidence": [
+        "benchmark.cpp:499-504: `result.rawReadOk = rawReadAtCurrentSpeed(buffer, BENCH_TEST_SIZE, result.rawReadMBs);` passes no error out-params, while the open/write/read/verify paths just above it (lines 443-487) all thread `result.ioErrorCode`/`result.ioErrorData` through.",
+        "benchmark_raw.cpp:66-84: rawReadAtCurrentSpeed() does call recordSdError() on failure, but stores the code/data into local stack variables that go out of scope on return — the caller never sees them.",
+        "spi_scale_benchmark.cpp:94-105 shows the pattern that would close this gap: after rawReadAtCurrentSpeed() fails there, it calls recordSdError(sd, point.errorCode, point.errorData, \"BENCH\") a second time to capture the code into its own result struct.",
+        "printBenchmarkResult() (benchmark.cpp:346-353) only prints the 'I/O error: XX/XX' line when ioErrorCode||ioErrorData is nonzero, so a raw-read failure shows only the generic 'Raw read: FAILED' with no code, unlike every other I/O failure surfaced in the same report."
+      ],
+      "suggestion": "In runQuickBenchmark(), immediately after the rawReadAtCurrentSpeed() call, if !result.rawReadOk call recordSdError(sd, result.ioErrorCode, result.ioErrorData, \"RAW READ\") — mirroring exactly what spi_scale_benchmark.cpp already does at its own rawReadAtCurrentSpeed() call site. No signature change needed since the SD error state is still valid immediately after the failed call returns.",
+      "confidence": "high",
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "root_cause_cluster": "error_code_field_mirroring_incomplete"
+    },
+    {
+      "dimension": "error_consistency",
+      "identifier": "write_only_error_code_fields",
+      "summary": "CardInfo.volumeErrorCode/volumeErrorData and SpiScalePoint.errorCode/errorData are populated by recordSdError() but never read back anywhere, unlike AttemptResult's identical fields",
+      "related_files": [
+        "src/core/app_types.h",
+        "src/hardware/sd_card.cpp",
+        "src/benchmark/spi_scale_benchmark.cpp",
+        "src/ui/display_diagnostics.cpp",
+        "src/ui/display_results.cpp"
+      ],
+      "evidence": [
+        "sd_card.cpp:432-437 populates info.volumeErrorCode/volumeErrorData on sd.volumeBegin() failure, but grepping src/ for volumeErrorCode/volumeErrorData shows only these two write sites — not even printCardReport() in the same file surfaces it.",
+        "spi_scale_benchmark.cpp writes point.errorCode/point.errorData in three failure branches (lines 73-101), but display_results.cpp's uiShowSpiScaleResult()/buildScaleSummary() (and ui_geometry.cpp's scalePointCoords()/buildScaleSummary()) only ever read point.ok/point.rawReadMBs/point.efficiencyPercent — the captured codes for failed points are never displayed anywhere.",
+        "By contrast, AttemptResult.errorCode/errorData (same uint8_t/uint8_t shape, same recordSdError() origin) IS read back later, in display_diagnostics.cpp:49-59, to render '<STAGE> XX/XX' on the diagnostics screen — establishing the pattern these two fields were evidently meant to follow."
+      ],
+      "suggestion": "Either finish the mirror by reading these fields back somewhere a developer/user would see them later (e.g. show volumeErrorCode/volumeErrorData next to the filesystem line in uiShowDiagnostics(), and show a failed point's errorCode/errorData in uiShowSpiScaleResult() when no point in the scale succeeded), or drop the fields entirely and rely on recordSdError()'s own Serial line if a persisted copy isn't actually needed. Leaving a field that mirrors a working pattern without completing the mirror is the inconsistency worth fixing.",
+      "confidence": "medium",
+      "impact_scope": "subsystem",
+      "fix_scope": "single_edit",
+      "root_cause_cluster": "error_code_field_mirroring_incomplete"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "Error-code out-params/struct fields are being added by pattern-matching an existing successful case (AttemptResult.errorCode read by uiShowDiagnostics) without always wiring a corresponding consumer for the new field, leaving write-only fields and one path (raw read inside runQuickBenchmark) that never got the capture call at all."
+    ],
+    "likely_symptoms": [
+      "write_only_error_code_fields"
+    ],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "error_consistency": {
+      "add": [
+        {
+          "header": "Shared recordSdError() helper is the single SD-error capture idiom",
+          "description": "Every SD failure path across sd_card.cpp, benchmark.cpp, benchmark_raw.cpp, and spi_scale_benchmark.cpp calls the same recordSdError(sd, code, data, label) helper, producing a uniform '<label> FAIL XX/XX' Serial line instead of ad hoc printf calls scattered per module.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Uniform bool-return, out-param error signaling with no exceptions",
+          "description": "Every fallible operation (scanCard, readTouch, rawReadAtCurrentSpeed, runChunkedIo, timedFileWrite/Read, verifyFile, removeTestFile) signals failure via a bool return plus optional out-params rather than exceptions, matching the no-exceptions embedded/Arduino style used everywhere else in the codebase.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Error-code struct fields are inconsistently read back after capture",
+          "description": "AttemptResult.errorCode/errorData is read back later by uiShowDiagnostics() and (as of the last fix round) BenchmarkResult.ioErrorCode/ioErrorData is read back by printBenchmarkResult() for the open/write/read/verify paths, but CardInfo.volumeErrorCode/volumeErrorData and SpiScalePoint.errorCode/errorData are written by recordSdError() and never read anywhere else in src/ — a write-only half of the same pattern.",
+          "settled": true,
+          "positive": false
+        },
+        {
+          "header": "Raw sector read failures bypass BenchmarkResult's ioErrorCode field",
+          "description": "rawReadAtCurrentSpeed() has no error out-params, and runQuickBenchmark() doesn't call recordSdError() again after a raw-read failure the way spi_scale_benchmark.cpp does at its own call site, so BenchmarkResult.ioErrorCode/ioErrorData stays 0 for that one failure mode even though it's populated for the sibling open/write/read/verify failures in the same function.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

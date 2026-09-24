@@ -1,0 +1,58 @@
+{
+  "batch": "incomplete_migration",
+  "batch_index": 14,
+  "assessments": {
+    "incomplete_migration": 98.0
+  },
+  "dimension_notes": {
+    "incomplete_migration": {
+      "evidence": [
+        "grep for TODO|FIXME|DEPRECATED|legacy|migrate|shim|backward|compat across src/ returns zero matches",
+        "README.md and CLAUDE.md document a real v0.7 cleanup (raw chunk sweep, best-chunk fields, shared/dedicated SPI A/B toggle, experimental yield toggles, raw-progress toggle, hidden lastTitle progress state, old filesystemBytes naming, separate BENCH/SCALE home buttons) and grep confirms none of SHARED_SPI, lastTitle, filesystemBytes, bestChunk, rawChunkSweep exist anywhere in current source",
+        "platformio.ini defines USE_SPI_ARRAY_TRANSFER=1 as a single hardcoded build flag with no alternate/legacy value anywhere in the tree -- not a coexisting toggle",
+        "sd_card.cpp:37 passes DEDICATED_SPI as a fixed constant into SdSpiConfig; there is no SHARED_SPI branch or runtime switch left to choose between strategies",
+        "main.cpp is a single thin dispatcher (HomeAction/BenchMenuAction) with one control-flow path per action -- no parallel legacy handling",
+        "display_ui.cpp only implements the current consolidated BENCH submenu (Quick/Scale/Back per BTN_BENCH/BTN_SCALE), matching the documented v0.7 UI consolidation with no remnants of the old separate home buttons",
+        "The SPI_SPEEDS vs SPI_SCALE_SPEEDS 40MHz asymmetry is explicitly documented in CLAUDE.md as an intentional, permanent design decision rather than an in-progress migration"
+      ],
+      "impact_scope": "codebase",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "No functional evidence of incomplete migration was found; the 2.0-point deduction reflects residual uncertainty since verification relied on grep/text search rather than exhaustive manual reading of every file, so a very small chance of an undiscovered stale reference remains."
+    }
+  },
+  "dimension_judgment": {
+    "incomplete_migration": {
+      "dimension_character": "This codebase shows a textbook example of a completed migration: the README and CLAUDE.md narrate specific v0.7 removals (dead experimental toggles, misleading naming, duplicate UI buttons), and direct source inspection confirms every one of those symbols is genuinely gone rather than merely renamed or bypassed. There are no TODO/FIXME/legacy markers, no dual build-flag paths, and no coexisting old/new API shapes anywhere in src/.",
+      "score_rationale": "This sits at the top of the scale (anchor: 100 = migrations complete or intentionally bounded with clear documentation) because the historical cleanup is both documented and independently verifiable in the current code, with zero contradicting evidence found. The score is not a full 100 only because verification was grep/scan-based rather than an exhaustive line-by-line audit of all 31 files, leaving a small residual uncertainty."
+    }
+  },
+  "issues": [],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "incomplete_migration": {
+      "add": [
+        {
+          "header": "v0.7 dead-code removal verified complete in source",
+          "description": "README.md/CLAUDE.md document specific removals (raw chunk sweep, best-chunk fields, SHARED_SPI A/B toggle, yield toggles, raw-progress toggle, hidden lastTitle state, old filesystemBytes naming, separate BENCH/SCALE buttons) from v0.7; grepping src/ for each of these symbols returns zero hits, confirming the documentation matches runtime reality rather than being aspirational.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "No compile-time or runtime toggles for retired strategies",
+          "description": "platformio.ini's USE_SPI_ARRAY_TRANSFER=1 and sd_card.cpp's DEDICATED_SPI are single fixed values with no alternate path defined anywhere, so there is no dual old/new SPI strategy left coexisting in the build.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Intentional SPI speed-ladder asymmetry, not migration drift",
+          "description": "SPI_SPEEDS (normal scan, excludes 40MHz) vs SPI_SCALE_SPEEDS (diagnostic, includes 40MHz) looks like an inconsistency but is explicitly documented in CLAUDE.md as a deliberate, permanent decision -- correctly out of scope for incomplete_migration per the dimension's skip list."
+        }
+      ]
+    }
+  }
+}

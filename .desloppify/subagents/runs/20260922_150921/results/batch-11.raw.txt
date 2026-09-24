@@ -1,0 +1,66 @@
+{
+  "batch": "api_surface_coherence",
+  "batch_index": 11,
+  "assessments": {
+    "api_surface_coherence": 91.5
+  },
+  "dimension_notes": {
+    "api_surface_coherence": {
+      "evidence": [
+        "readTouch(int& sx, int& sy) (src/hardware/touch.h) and rawReadAtCurrentSpeed(buffer, bytesToRead, float& speedMBs) (src/benchmark/benchmark_internal.h) both use the same 'bool success + trailing out-ref' shape for hardware operations that can fail.",
+        "formatHumanBytes(bytes, char* out, size_t outSize), formatSpiClock(hz, char* out, size_t outSize) (src/hardware/card_format.h) and buildScaleSummary(result, char* out, size_t outSize) (src/ui/ui_geometry.h) all use the identical (inputs..., char* out, size_t outSize) shape for every string-producing function in the codebase -- no function returns a heap string or a differently-shaped buffer pair.",
+        "Across all 13 public headers (src/core, src/hardware, src/benchmark, src/ui) no function is overloaded and no public function exceeds 5 parameters -- the widest is scalePointCoords(graph, maxSpeed, index, count, point) in src/ui/ui_geometry.h at exactly 5.",
+        "Screen-drawing functions uniformly take CardInfo/BenchmarkResult/SpiScaleResult by const&: uiDrawHome(const CardInfo&), uiShowBenchmarkResult(const CardInfo&, const BenchmarkResult&), uiShowDiagnostics(const CardInfo&, const AttemptResult*, size_t) (src/ui/display_ui.h) -- no screen function reaches into global getters itself, keeping the render boundary explicit and consistent.",
+        "The one real API-shape divergence in the codebase -- scanCard() (src/hardware/sd_card.h) exposing per-attempt SPI results via persistent global getters (getAttempts()/getAttemptCount()) versus runSpiScalingBenchmark() (src/benchmark/benchmark.h) returning a self-contained SpiScaleResult -- is now explained by an 11-line doc comment directly on scanCard()'s declaration, so a reader encounters the rationale before being surprised by it.",
+        "Residual friction: scanCard()'s bool return value is still discarded at every call site (src/main.cpp rescan(), src/hardware/sd_card.cpp initSdHardware() path) -- functionally a void function wearing a bool signature; only the header doc comment reveals this is intentional, so a reader who starts from a call site rather than the header can still be briefly misled.",
+        "uiShowProgress(title, stage, done, total, float liveMBs = -1.0f) (src/ui/display_ui.h) uses a sentinel default (-1.0f) to mean 'no live rate available' rather than an Optional/bool flag, but this is applied consistently at both of its two call shapes in src/benchmark/benchmark.cpp (with and without showLiveRate) and documented enough not to cause confusion."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "scanCard()'s bool return value is still unused by every caller; the API is honest only because of a header doc comment rather than the signature itself (e.g. it could be void, or the doc comment could live closer to call sites). This is a very minor, already-documented wart rather than a live defect, so it caps the score just under the 'no material issues' tier without justifying a new open issue."
+    }
+  },
+  "dimension_judgment": {
+    "api_surface_coherence": {
+      "dimension_character": "This is a small, disciplined embedded API surface (roughly 40 public functions across 13 headers) with strong, uniform shape conventions: bool+out-ref for fallible hardware reads, (inputs, char* out, size_t outSize) for every string-producing helper, and const-reference passing for all shared state structs. The one genuine shape divergence in the codebase -- scanCard()'s persistent-state model versus runSpiScalingBenchmark()'s self-contained result -- was surfaced by a prior review round and is now thoroughly documented at the point of declaration, so it reads as a deliberate design choice rather than an inconsistency.",
+      "score_rationale": "The codebase sits above the 90 anchor ('strong, minor friction or isolated rough edges') rather than at 100, because scanCard()'s unused bool return is real (if minor and now well-documented) friction, and reaching the design rationale requires reading a doc comment rather than the signature itself. There are no recurring irregularities, no mixed sync/async concerns (single-threaded loop), no parameter-order drift, and no functions overloaded by argument type, so nothing pulls the score down toward the 80 'recurring friction' tier."
+    }
+  },
+  "issues": [],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "api_surface_coherence": {
+      "add": [
+        {
+          "header": "Uniform bool+out-ref shape for fallible reads",
+          "description": "readTouch() and rawReadAtCurrentSpeed() both signal success via a bool return with the result written to a trailing reference parameter, so a developer who has seen one fallible hardware-read function can predict the shape of the other without checking its implementation.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Uniform (inputs, char* out, size_t outSize) shape for string producers",
+          "description": "formatHumanBytes(), formatSpiClock(), and buildScaleSummary() are the only string-producing functions in the codebase and all three use the identical bounded-buffer output pattern -- consistent with embedded/no-heap constraints and predictable across call sites.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "No overloads, no >5-param public functions",
+          "description": "Across all 13 public headers, no function name is overloaded and the widest public signature (scalePointCoords, 5 params) stays at the documented threshold -- there is no evidence of argument-type-based interface overloading anywhere in the public surface.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "scanCard()/runSpiScalingBenchmark() shape divergence remains, now fully documented",
+          "description": "The previously-flagged shape mismatch between scanCard()'s persistent-getter model and runSpiScalingBenchmark()'s self-contained SpiScaleResult was resolved by adding an explicit rationale comment on scanCard()'s declaration in sd_card.h rather than unifying the shapes; this is a legitimate and sufficient resolution since the two functions serve genuinely different access patterns (queryable history vs. one-shot display), but scanCard()'s bool return staying unused at every call site is a small residual wart worth watching if the API evolves further.",
+          "settled": false,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

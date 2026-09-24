@@ -1,0 +1,105 @@
+{
+  "batch": "error_consistency",
+  "batch_index": 4,
+  "assessments": {
+    "error_consistency": 84.0
+  },
+  "dimension_notes": {
+    "error_consistency": {
+      "evidence": [
+        "recordSdError() (hardware/sd_card.h/.cpp) is a single shared helper that captures sd.sdErrorCode()/sd.sdErrorData() and prints a uniform 'LABEL FAIL XX/XX' line; it is called consistently at every stage of scanCard() (INIT/CID/CSD/READ) and at every stage of runSpiScalingBenchmark() (INIT/READ/BENCH), and after sd.volumeBegin() failure in scanCard().",
+        "BenchmarkResult (src/core/app_types.h lines 53-69) has only bool *Ok fields (preallocOk, fileWriteOk, fileReadOk, verifyOk, rawReadOk, cleanupOk) and no error-code fields, unlike CardInfo (volumeErrorCode/volumeErrorData), AttemptResult (errorCode/errorData) and SpiScalePoint (errorCode/errorData).",
+        "runChunkedIo() in src/benchmark/benchmark.cpp (used by timedFileWrite/timedFileRead/verifyFile) returns false on a short transfer (transferred != (int)chunk) without calling recordSdError() or logging anything at all, so a failed file write/read in the quick benchmark leaves no diagnostic trail.",
+        "runQuickBenchmark() (src/benchmark/benchmark.cpp) has `if (file) { ... }` around the entire write/read/verify sequence with no else branch; when sd.open(TEST_FILE, O_RDWR|O_CREAT|O_TRUNC) fails, execution silently falls through to the raw-read stage with zero Serial output, unlike every card-level failure branch elsewhere in the codebase.",
+        "rawReadAtCurrentSpeed() (src/benchmark/benchmark_raw.cpp) does capture sd.sdErrorCode()/sd.sdErrorData() on failure but via its own inline Serial.printf('Raw read failed at LBA %lu: %02X/%02X') rather than the shared recordSdError() helper, producing a second message format for the same kind of failure.",
+        "No exceptions are used anywhere in src/ (grepped for try/catch/throw) — the codebase uniformly uses bool return values plus out-parameters for failure signaling, appropriate for this embedded, exceptions-off target.",
+        "allocateDmaBuffer() (hardware/sd_card.h/.cpp) is the single shared allocation-failure helper; all three call sites (scanCard, runQuickBenchmark, runSpiScalingBenchmark) check its nullptr return and take a well-defined failure path."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor",
+      "confidence": "high"
+    }
+  },
+  "dimension_judgment": {
+    "error_consistency": {
+      "dimension_character": "Error handling is data-driven and exception-free: failures propagate as bool return values plus explicit error-code fields, captured through one shared recordSdError() helper used consistently across scanCard() and the SPI-scaling benchmark. That discipline breaks down for the quick file benchmark: BenchmarkResult carries no error-code fields at all, and a failed sd.open() there produces no log line whatsoever, unlike every other SD failure path in the codebase.",
+      "score_rationale": "The card-qualification and SPI-scaling paths exemplify the ~90 anchor: predictable failure propagation with preserved error context via one shared helper, and no mixed throw/return/Result strategies anywhere. But the quick-benchmark file I/O path never captures or logs an SD error code, and one branch (sd.open() failure) logs nothing at all — exactly the 'developer encounters mixed strategies across related code paths' pattern at the 80 anchor. Because the gap is confined to one struct/file rather than pervasive, the score sits above 80 but below 90."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "error_consistency",
+      "identifier": "benchmark_result_no_error_capture",
+      "summary": "BenchmarkResult captures no SD error code on failure, unlike CardInfo/AttemptResult/SpiScalePoint",
+      "related_files": ["src/core/app_types.h", "src/benchmark/benchmark.cpp"],
+      "evidence": [
+        "app_types.h: BenchmarkResult has only bool *Ok fields; CardInfo has volumeErrorCode/volumeErrorData and AttemptResult/SpiScalePoint both have errorCode/errorData populated via recordSdError().",
+        "benchmark.cpp's runChunkedIo() (backing timedFileWrite/timedFileRead/verifyFile) returns false on a short transfer without ever calling recordSdError() or logging the SD error state."
+      ],
+      "suggestion": "Add uint8_t ioErrorCode/ioErrorData to BenchmarkResult, and have runChunkedIo() call recordSdError() (or read sd's error state directly) when transferred != chunk, populating those fields — mirroring the fix already applied to sd.volumeBegin() failures in sd_card.cpp.",
+      "confidence": "high",
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor",
+      "root_cause_cluster": "sd_error_capture_gap"
+    },
+    {
+      "dimension": "error_consistency",
+      "identifier": "silent_file_open_failure",
+      "summary": "sd.open() failure in runQuickBenchmark() produces no Serial output at all, unlike every other SD failure branch",
+      "related_files": ["src/benchmark/benchmark.cpp"],
+      "evidence": [
+        "runQuickBenchmark() wraps the entire write/read/verify sequence in `if (file) { ... }` with no else branch; when sd.open(TEST_FILE, O_RDWR|O_CREAT|O_TRUNC) fails, the function falls through to the raw-read stage with fileWriteOk/fileReadOk/verifyOk/cleanupOk left at defaults and zero log output.",
+        "Every other card-level failure (scanCard()'s INIT/CID/CSD/READ, sd.volumeBegin(), spi_scale_benchmark's INIT/READ/BENCH, benchmark_raw.cpp's raw read) prints a diagnostic line on failure; this is the only I/O failure branch with none."
+      ],
+      "suggestion": "Add an else branch after `if (file)` that logs the open failure via recordSdError() (reusing sd.sdErrorCode()/sd.sdErrorData()), consistent with every other SD failure branch in the codebase.",
+      "confidence": "medium",
+      "impact_scope": "local",
+      "fix_scope": "single_edit",
+      "root_cause_cluster": "sd_error_capture_gap"
+    },
+    {
+      "dimension": "error_consistency",
+      "identifier": "raw_read_bypasses_recordsderror",
+      "summary": "rawReadAtCurrentSpeed() hand-rolls its own SD error log format instead of using the shared recordSdError() helper",
+      "related_files": ["src/benchmark/benchmark_raw.cpp", "src/hardware/sd_card.cpp"],
+      "evidence": [
+        "recordSdError() standardizes 'LABEL FAIL XX/XX' for scanCard() and runSpiScalingBenchmark(), but rawReadAtCurrentSpeed() prints 'Raw read failed at LBA %lu: %02X/%02X' via its own inline Serial.printf on the same sd.sdErrorCode()/sd.sdErrorData() pair, producing a second message format for the same failure kind."
+      ],
+      "suggestion": "If the LBA needs to appear in the message, pass a formatted label (e.g. a small local buffer with 'READ LBA %lu') into recordSdError() rather than maintaining a second printf call, so all SD failure log lines share one format.",
+      "confidence": "low",
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "The recordSdError()/errorCode+errorData pattern was retrofitted onto CardInfo (volumeBegin) in a prior review round but never extended to BenchmarkResult, leaving the quick-benchmark file I/O path as the one place still using bare booleans with no diagnostic capture."
+    ],
+    "likely_symptoms": ["silent_file_open_failure"],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "error_consistency": {
+      "add": [
+        {
+          "header": "Shared recordSdError() helper standardizes SD failure logging",
+          "description": "scanCard() and runSpiScalingBenchmark() both call recordSdError() at every failure stage, capturing sd.sdErrorCode()/sd.sdErrorData() into the caller's error-code fields and printing a uniform 'LABEL FAIL XX/XX' line, giving predictable, traceable failure diagnostics for the card-qualification family of operations.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "No exceptions anywhere; uniform bool+out-param failure signaling",
+          "description": "The whole src/ tree uses bool return values plus out-parameters for failure propagation with zero try/catch/throw usage, consistent with an embedded, exceptions-off C++ target and avoiding the mixed-strategy problem this dimension watches for.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "BenchmarkResult lacks the error-code fields CardInfo/AttemptResult/SpiScalePoint have",
+          "description": "The quick file benchmark (runQuickBenchmark/runChunkedIo in benchmark.cpp) is the one I/O path in the codebase whose result struct and failure branches never capture an SD error code, and one branch (failed sd.open()) logs nothing at all — a gap left over from a prior fix that added error-code capture to CardInfo.volumeErrorCode but not to BenchmarkResult.",
+          "settled": false,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

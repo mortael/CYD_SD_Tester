@@ -1,0 +1,90 @@
+{
+  "batch": "naming_quality",
+  "batch_index": 5,
+  "assessments": {
+    "naming_quality": 92.0
+  },
+  "dimension_notes": {
+    "naming_quality": {
+      "evidence": [
+        "CardInfo/BenchmarkResult/SpiScalePoint booleans (cardOk, volumeOk, cidOk, csdOk, preallocOk, fileWriteOk, fileReadOk, verifyOk, rawReadOk, cleanupOk, point.ok) all use a consistent Ok suffix, so a reader can predict every flag's meaning without checking the implementation.",
+        "getSd()/getCardInfo()/getAttempts()/getAttemptCount() in src/hardware/sd_card.h are all pure, side-effect-free reads of module state - the get prefix never lies.",
+        "main.cpp's private orchestrators (rescan(), showDiagnostics(), runBenchMenu()) are named without a ui prefix and each simply sequences one or more ui*()-prefixed pure draw/interaction calls (uiDrawHome, uiShowDiagnostics, uiWaitForTap) - a consistent, learnable split between 'draws/reads input' (ui*) and 'orchestrates a user-visible flow' (bare verb) that resolves the naming collision risk flagged in a prior review round.",
+        "sd_card.h documents, right at the declaration, exactly why scanCard() returns a persistent-state getter pattern while runSpiScalingBenchmark() (benchmark.h) returns a one-shot SpiScaleResult instead - preventing the kind of get-vs-return ambiguity that would otherwise require reading both implementations.",
+        "Pure helper modules (bench_math.h, card_format.h, card_identity.h, ui_geometry.h) all use precise, single-purpose names - crc32Update, throughputMBs, preparePattern, repeatedBufferCrc32, spiEfficiencyPercent, formatHumanBytes, formatSpiClock, cardTypeName, fsName, attemptStageName, resolveVendor, identityCheckName, hitTestRect, computeBarFillWidth - each name states exactly what value it computes.",
+        "src/hardware/touch.h declares `bool readTouch(int& sx, int& sy)`, and touch.cpp's own body computes descriptive `rawX`/`rawY` locals before abbreviating the mapped result to `sx`/`sy` - while touch_calibration.h's mapTouchToScreen() uses fully-spelled `screenX`/`screenY` for the identical screen-coordinate concept, and ui_geometry.h uses `pointX`/`pointY`/`rectX`/`rectY` elsewhere. This is the one place in the codebase where an abbreviation diverges from the descriptive-name convention used for the same concept everywhere else."
+      ],
+      "impact_scope": "local",
+      "fix_scope": "single_edit",
+      "confidence": "high",
+      "issues_preventing_higher_score": "readTouch()'s sx/sy output parameters (src/hardware/touch.h, src/hardware/touch.cpp) abbreviate screen coordinates inconsistently with the screenX/screenY naming already established for the same concept in mapTouchToScreen()."
+    }
+  },
+  "dimension_judgment": {
+    "naming_quality": {
+      "dimension_character": "Naming across this small codebase is exceptionally disciplined: booleans consistently carry an Ok suffix, getters are pure and side-effect-free, ui-prefixed screen functions are cleanly separated from unprefixed orchestration in main.cpp, and doc comments proactively head off ambiguity between near-synonym functions (scanCard vs runSpiScalingBenchmark). The strengths are systemic rather than isolated - they hold across hardware/, benchmark/, and ui/ alike - and the only defect found is a single, low-stakes abbreviation inconsistency in touch coordinate parameter names.",
+      "score_rationale": "This lands at the 90 anchor (mostly precise, minor friction) rather than 100 (no material issues) because of the sx/sy vs screenX/screenY drift, which is real but strictly local and trivial to fix. Every other function and field name observed lets a developer correctly predict behavior without opening the implementation, which is well above the 80 anchor's 'regularly encounters names that don't communicate intent' bar - there is nothing regular about the one gap found here."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "naming_quality",
+      "identifier": "touch_sx_sy_abbreviation",
+      "summary": "readTouch()'s sx/sy output params abbreviate screen coords inconsistently with screenX/screenY used for the same concept elsewhere",
+      "related_files": [
+        "src/hardware/touch.h",
+        "src/hardware/touch.cpp"
+      ],
+      "evidence": [
+        "touch.h: `bool readTouch(int& sx, int& sy);`",
+        "touch.cpp's readTouch() computes fully-spelled `rawX`/`rawY` locals, then passes them to `mapTouchToScreen(rawX, rawY, sx, sy)` - mixing descriptive and abbreviated names for coordinate values within the same function.",
+        "touch_calibration.h's mapTouchToScreen() uses `int& screenX, int& screenY` for the identical output concept, and ui_geometry.h uses `pointX`/`pointY`/`rectX`/`rectY` for coordinates elsewhere - sx/sy is the only abbreviated pair in the codebase's coordinate-naming vocabulary."
+      ],
+      "suggestion": "Rename readTouch()'s `sx`/`sy` parameters to `screenX`/`screenY` in both touch.h and touch.cpp (and update the two call sites in main.cpp's parameter names only if desired - the call sites already use local `x`/`y`, which is fine) so the same concept is spelled the same way everywhere it appears.",
+      "confidence": "medium",
+      "impact_scope": "local",
+      "fix_scope": "single_edit"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "naming_quality": {
+      "add": [
+        {
+          "header": "Ok-suffix convention for all boolean status fields",
+          "description": "CardInfo, BenchmarkResult, and SpiScalePoint all name their boolean status flags with an Ok suffix (cardOk, volumeOk, cidOk, csdOk, preallocOk, fileWriteOk, fileReadOk, verifyOk, rawReadOk, cleanupOk, point.ok). This is applied with zero exceptions across every struct in app_types.h, so a reader can trust the pattern on sight without checking definitions.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "ui-prefix separates pure screen functions from main.cpp orchestrators",
+          "description": "Every function that only draws or reads touch input is named uiSomething() (uiDrawHome, uiShowDiagnostics, uiHitTestHome, uiWaitForTap, etc.) and lives in ui/. main.cpp's private helpers that sequence a user-visible flow (rescan, showDiagnostics, runBenchMenu) deliberately omit the prefix. This resolves the prior showDiagnosticsScreen()/uiShowDiagnostics() naming-collision concern: the current showDiagnostics()/uiShowDiagnostics() pair now instantiates a consistent, learnable convention rather than an isolated ambiguity.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Doc comments disambiguate near-synonym function pairs",
+          "description": "Where two functions could otherwise be confused for one another (scanCard() vs runSpiScalingBenchmark(), which both re-qualify SD hardware but return differently-shaped results), the header declaration carries a multi-line comment explaining the distinction. This preempts the kind of name-based confusion the dimension looks for, at the point of declaration rather than requiring the reader to diff implementations.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Pure getters (getSd/getCardInfo/getAttempts/getAttemptCount) never mutate",
+          "description": "Every get-prefixed function in sd_card.h returns a reference or pointer to existing module state without side effects, so the get prefix reliably signals 'read-only' throughout the codebase.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "sx/sy abbreviation is an isolated outlier in touch.h",
+          "description": "readTouch()'s sx/sy parameters are the only abbreviated coordinate names in the codebase; every other coordinate-producing function (mapTouchToScreen, hitTestRect, computeBarFillWidth call sites) spells out screenX/screenY, rawX/rawY, pointX/pointY, rectX/rectY. Tracked as issue touch_sx_sy_abbreviation.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}

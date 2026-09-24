@@ -1,0 +1,83 @@
+{
+  "batch": "api_surface_coherence",
+  "batch_index": 11,
+  "assessments": {
+    "api_surface_coherence": 85.0
+  },
+  "dimension_notes": {
+    "api_surface_coherence": {
+      "evidence": [
+        "Input-then-output-by-reference parameter ordering is applied consistently across the whole codebase: readTouch(int&, int&), mapTouchToScreen(rawX, rawY, int&, int&), timedFileWrite/timedFileRead(file, buffer, float& speedMBs), verifyFile(file, buffer, expectedCrc, uint32_t& actualCrc), rawReadAtCurrentSpeed(buffer, bytesToRead, float& speedMBs) all put inputs first and out-params last.",
+        "The uiShow*/uiDraw*/uiHitTest* family in display_ui.h has a uniform shape: each takes the relevant domain result struct by const reference (or plain ints for hit-testing) and returns void or a plain action enum -- no function in that family mixes styles.",
+        "Pure math/formatting helpers (bench_math.h, card_format.h, ui_geometry.h) document their edge-case return behavior directly in header comments (e.g. 'Returns 0 if hz is 0', 'Returns 0 if maxValue <= 0'), giving callers an explicit contract without needing exceptions or Optional types.",
+        "scanCard() (sd_card.h) reports only a single bool and exposes its per-attempt error detail (AttemptResult: stage/errorCode/errorData) exclusively through separate global getters getAttempts()/getAttemptCount(), whereas the structurally identical multi-speed probe runSpiScalingBenchmark() (benchmark.h) returns a self-contained SpiScaleResult whose SpiScalePoint entries carry ok/errorCode/errorData directly in the return value -- two near-identical 'try N SPI speeds, record per-attempt outcome' operations expose their results through different shapes (pull via globals vs. push via return value).",
+        "card_format.h's formatHumanBytes/formatSpiClock use a C-style (buffer, size) out-parameter pair while the touch/geometry helpers use int& out-parameters -- a legitimate divergence (string buffers can't be returned by reference the same way) rather than a real inconsistency.",
+        "No function overloading, no sync/async mixing (the whole app is a single-threaded Arduino loop with no tasks/interrupts), and no public function exceeds 5 parameters (uiShowProgress tops out at 5, with one trailing default)."
+      ],
+      "impact_scope": "module",
+      "fix_scope": "single_edit",
+      "confidence": "medium",
+      "sub_axes": {}
+    }
+  },
+  "dimension_judgment": {
+    "api_surface_coherence": {
+      "dimension_character": "The public API surface is small (31 files, ~40 public functions) and mostly follows a few consistent shapes: inputs-before-outputs parameter ordering, a uniform uiShow*/uiDraw*/uiHitTest* family, and well-documented edge-case behavior on pure math helpers. The one real irregularity is that two structurally identical 'probe N SPI speeds and record per-attempt error codes' operations (scanCard vs runSpiScalingBenchmark) expose their per-attempt results through different mechanisms -- global getters for one, a returned struct for the other -- which would surprise a developer extending either path.",
+      "score_rationale": "This sits in the solid-but-uneven band (anchor 80-90): a developer can predict most API shapes from a single example, and the codebase avoids overloading, mixed sync/async, and oversized parameter lists entirely, but the scanCard/runSpiScalingBenchmark asymmetry is a genuine recurring-pattern inconsistency rather than a style nit, which keeps it from the 90+ exemplary range."
+    }
+  },
+  "issues": [
+    {
+      "dimension": "api_surface_coherence",
+      "identifier": "sd_scan_result_shape_asymmetry",
+      "summary": "scanCard() and runSpiScalingBenchmark() expose per-attempt SPI results through different API shapes",
+      "related_files": ["src/hardware/sd_card.h", "src/hardware/sd_card.cpp", "src/benchmark/benchmark.h", "src/benchmark/spi_scale_benchmark.cpp", "src/core/app_types.h"],
+      "evidence": [
+        "sd_card.h: bool scanCard() returns only success/failure; per-speed detail (AttemptResult{hz, stage, errorCode, errorData}) is only reachable afterward via the separate globals getAttempts()/getAttemptCount().",
+        "benchmark.h: SpiScaleResult runSpiScalingBenchmark() returns a self-contained struct whose SpiScalePoint{hz, ok, rawReadMBs, efficiencyPercent, errorCode, errorData} entries carry the same kind of per-attempt outcome directly in the return value -- no separate getter needed.",
+        "Both functions iterate the same kind of 'try each SPI speed, record stage/errorCode/errorData' loop (sd_card.cpp scanCard() vs spi_scale_benchmark.cpp runSpiScalingBenchmark()), so a caller familiar with one would reasonably but incorrectly assume the other follows the same access pattern."
+      ],
+      "suggestion": "Make scanCard() return the same kind of self-contained result the scaling benchmark uses -- e.g. have it populate and return (or take a reference to) an array/struct of AttemptResult directly, instead of requiring a follow-up getAttempts()/getAttemptCount() call. This removes the global-state readout path without adding any new abstraction.",
+      "confidence": "medium",
+      "impact_scope": "module",
+      "fix_scope": "multi_file_refactor"
+    }
+  ],
+  "retrospective": {
+    "root_causes": [
+      "scanCard()'s getter-based result access predates the later SpiScaleResult struct design used for the scaling benchmark; the two multi-attempt probing features were built at different times without reconciling how per-attempt detail is surfaced."
+    ],
+    "likely_symptoms": [],
+    "possible_false_positives": []
+  },
+  "context_updates": {
+    "api_surface_coherence": {
+      "add": [
+        {
+          "header": "Consistent inputs-before-outputs parameter ordering",
+          "description": "Every function using reference/pointer out-parameters (readTouch, mapTouchToScreen, timedFileWrite/Read, verifyFile, rawReadAtCurrentSpeed) places inputs first and outputs last, so a developer can predict parameter order from any single example.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Uniform uiShow*/uiDraw*/uiHitTest* family shape",
+          "description": "All display_ui.h entry points take the relevant domain struct by const reference and return void or a plain action enum, with no mixed styles across the family.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "Edge-case return behavior documented on pure helpers",
+          "description": "bench_math.h and ui_geometry.h document what a function returns at boundary inputs (e.g. hz==0, maxValue<=0) directly in header comments, giving callers an explicit contract without exceptions or Optional types.",
+          "settled": true,
+          "positive": true
+        },
+        {
+          "header": "scanCard vs runSpiScalingBenchmark result-shape asymmetry",
+          "description": "Two structurally identical multi-speed SPI probing operations expose per-attempt error detail differently: scanCard() via global getters (getAttempts/getAttemptCount), runSpiScalingBenchmark() via a directly returned struct. See issue sd_scan_result_shape_asymmetry.",
+          "settled": true,
+          "positive": false
+        }
+      ]
+    }
+  }
+}
